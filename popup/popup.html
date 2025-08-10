@@ -65,6 +65,95 @@
                 </div>
             </div>
         </section>
+
+        <!-- 自动化注册区域 -->
+        <section class="automation-section">
+            <div class="section-header">
+                <span class="section-icon">🤖</span>
+                <h2 class="section-title">自动化注册</h2>
+            </div>
+
+            <!-- 流程选择 -->
+            <div class="flow-selection">
+                <select id="flowSelector" class="flow-select">
+                    <option value="">选择自动化流程...</option>
+                    <!-- 动态加载流程配置 -->
+                </select>
+                <button id="refreshFlowsBtn" class="icon-btn" title="刷新流程列表">🔄</button>
+            </div>
+
+            <!-- 执行状态显示 -->
+            <div class="automation-status" id="automationStatus" style="display: none;">
+                <div class="status-header">
+                    <span class="status-icon" id="statusIcon">⏳</span>
+                    <span class="status-text" id="statusText">准备中...</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    <span class="progress-text" id="progressText">0/0</span>
+                </div>
+            </div>
+
+            <!-- 当前步骤信息 -->
+            <div class="current-step" id="currentStep" style="display: none;">
+                <div class="step-info">
+                    <h4 class="step-name" id="stepName"></h4>
+                    <p class="step-description" id="stepDescription"></p>
+                </div>
+            </div>
+
+            <!-- 🔑 人机验证等待界面 (核心新功能) -->
+            <div class="human-verification" id="humanVerification" style="display: none;">
+                <div class="verification-header">
+                    <span class="verification-icon">🔐</span>
+                    <h3>需要人机验证</h3>
+                </div>
+                <div class="verification-content">
+                    <p class="verification-message" id="verificationMessage">
+                        请在页面上完成人机验证，然后点击下方的"继续"按钮
+                    </p>
+                    <div class="verification-timeout" id="verificationTimeout">
+                        <span>剩余时间: </span>
+                        <span class="timeout-counter" id="timeoutCounter">5:00</span>
+                    </div>
+                </div>
+                <div class="verification-actions">
+                    <button id="continueBtn" class="primary-btn">✅ 继续执行</button>
+                    <button id="skipVerificationBtn" class="secondary-btn" style="display: none;">跳过</button>
+                    <button id="retryVerificationBtn" class="secondary-btn" style="display: none;">重试</button>
+                </div>
+            </div>
+
+            <!-- 控制按钮 -->
+            <div class="button-group">
+                <button id="startAutomationBtn" class="primary-btn">开始自动化注册</button>
+                <button id="pauseAutomationBtn" class="secondary-btn" style="display: none;">⏸️ 暂停</button>
+                <button id="resumeAutomationBtn" class="secondary-btn" style="display: none;">▶️ 恢复</button>
+                <button id="stopAutomationBtn" class="danger-btn" style="display: none;">⏹️ 停止</button>
+                <button id="openSidebarBtn" class="secondary-btn">📋 侧边栏</button>
+                <button id="manageFlowsBtn" class="secondary-btn">⚙️ 管理流程</button>
+            </div>
+
+            <!-- 步骤进度列表 -->
+            <div class="automation-progress" id="automationProgress" style="display: none;">
+                <h4>执行进度</h4>
+                <div id="automationSteps" class="steps-container">
+                    <!-- 动态生成步骤进度 -->
+                </div>
+            </div>
+
+            <!-- 执行日志 -->
+            <div class="execution-log" id="executionLog" style="display: none;">
+                <h4>执行日志</h4>
+                <div class="log-container" id="logContainer">
+                    <!-- 显示执行日志 -->
+                </div>
+                <div class="log-actions">
+                    <button id="clearLogBtn" class="secondary-btn">清除日志</button>
+                    <button id="exportLogBtn" class="secondary-btn">导出日志</button>
+                </div>
+            </div>
+        </section>
     </div>
 
     <!-- 历史记录弹窗 -->

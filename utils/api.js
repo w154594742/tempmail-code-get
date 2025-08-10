@@ -153,20 +153,20 @@ class ApiManager {
   // 获取最新邮件中的验证码
   async getLatestMailCode() {
     try {
-      if (!this.storageManager) {
-        await this.init();
-      }
+      // 从正确的键名读取配置
+      const result = await chrome.storage.local.get(['emailConfig', 'tempMailConfig']);
+      const emailConfig = result.emailConfig || {};
+      const tempMailConfig = result.tempMailConfig || {};
 
-      const emailConfig = await this.storageManager.getConfig('emailConfig');
-      const tempMailConfig = await this.storageManager.getConfig('tempMailConfig');
       const email = emailConfig.targetEmail;
+      const epin = tempMailConfig.epin || '';
 
       if (!email) {
-        throw new Error('未配置目标邮箱地址');
+        throw new Error('未配置目标邮箱地址，请在设置页面配置');
       }
 
       // 获取邮件列表
-      const mailListData = await this.getMailList(email, tempMailConfig.epin);
+      const mailListData = await this.getMailList(email, epin);
 
       if (!mailListData.result || !mailListData.first_id) {
         return null;
@@ -175,7 +175,7 @@ class ApiManager {
       const firstId = mailListData.first_id;
 
       // 获取邮件详情
-      const mailDetailData = await this.getMailDetail(firstId, email, tempMailConfig.epin);
+      const mailDetailData = await this.getMailDetail(firstId, email, epin);
       
       if (!mailDetailData.result) {
         return null;
@@ -192,7 +192,7 @@ class ApiManager {
       // 如果获取到验证码，尝试删除邮件
       if (code) {
         try {
-          await this.deleteMail(firstId, email, tempMailConfig.epin);
+          await this.deleteMail(firstId, email, epin);
           console.log('邮件删除成功');
         } catch (deleteError) {
           console.warn('删除邮件失败，但验证码已获取:', deleteError);
@@ -238,6 +238,7 @@ class ApiManager {
 
           // 保存到历史记录
           if (this.storageManager) {
+            // 从emailConfig获取邮箱地址
             const emailConfig = await this.storageManager.getConfig('emailConfig');
             const email = emailConfig.targetEmail;
 
@@ -300,19 +301,19 @@ class ApiManager {
   // 测试API连接
   async testConnection() {
     try {
-      if (!this.storageManager) {
-        await this.init();
-      }
+      // 从正确的键名读取配置
+      const result = await chrome.storage.local.get(['emailConfig', 'tempMailConfig']);
+      const emailConfig = result.emailConfig || {};
+      const tempMailConfig = result.tempMailConfig || {};
 
-      const emailConfig = await this.storageManager.getConfig('emailConfig');
-      const tempMailConfig = await this.storageManager.getConfig('tempMailConfig');
       const email = emailConfig.targetEmail;
+      const epin = tempMailConfig.epin || '';
 
       if (!email) {
-        throw new Error('未配置目标邮箱地址');
+        throw new Error('未配置目标邮箱地址，请在设置页面配置');
       }
 
-      await this.getMailList(email, tempMailConfig.epin);
+      await this.getMailList(email, epin);
       return true;
     } catch (error) {
       console.error('API连接测试失败:', error);

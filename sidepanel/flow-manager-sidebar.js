@@ -1,0 +1,2619 @@
+// 侧边栏流程管理器
+class SidebarFlowManager {
+  constructor() {
+    this.flows = [];
+    this.currentEditingFlow = null;
+    this.currentEditingStepIndex = -1;
+    this.stepCounter = 0;
+    this.currentPage = 'home';
+    this.pageHistory = [];
+    this.logs = [];
+    this.maxLogs = 100;
+    this.runningFlows = new Set(); // 跟踪正在运行的流程
+    this.isUserStoppingCode = false; // 标志用户是否主动停止获取验证码
+    this.init();
+  }
+
+  async init() {
+    this.bindEventListeners();
+    this.bindNavigationListeners();
+    this.bindMessageListeners();
+    await this.loadFlows();
+    this.renderFlows();
+    this.updateDomainFilter();
+    this.showPage('home');
+    this.renderLogs();
+    this.setupConsoleCapture();
+
+    this.addLog('侧边栏管理器初始化完成', 'success');
+    console.log('SidebarFlowManager 初始化完成');
+  }
+
+  // 绑定事件监听器
+  bindEventListeners() {
+    // 流程管理页面按钮
+    document.getElementById('createFlowBtnEmpty').addEventListener('click', () => this.createNewFlow());
+    document.getElementById('createFlowBtn2').addEventListener('click', () => this.createNewFlow());
+    document.getElementById('importFlowBtn2').addEventListener('click', () => this.importFlow());
+
+    // 搜索和过滤
+    document.getElementById('searchFlow').addEventListener('input', (e) => this.filterFlows());
+    document.getElementById('filterDomain').addEventListener('change', (e) => this.filterFlows());
+
+    // 模态框
+    document.getElementById('closeModal').addEventListener('click', () => this.closeModal());
+    document.getElementById('cancelBtn').addEventListener('click', () => this.closeModal());
+    document.getElementById('saveFlowBtn').addEventListener('click', () => this.saveFlow());
+    document.getElementById('testFlowBtn').addEventListener('click', () => this.testFlow());
+
+    // 步骤管理
+    document.getElementById('addStepBtn').addEventListener('click', () => this.addStep());
+
+
+  }
+
+  // 创建新流程
+  createNewFlow() {
+    this.currentEditingFlow = null;
+    this.currentEditingStepIndex = -1;
+    this.stepCounter = 0;
+
+    // 重置表单
+    document.getElementById('flowForm').reset();
+    document.getElementById('modalTitle').textContent = '创建新流程';
+
+    // 清空步骤容器
+    document.getElementById('stepsContainer').innerHTML = '';
+
+    // 尝试获取当前页面信息并预填充
+    this.prefillCurrentPageInfo();
+
+    this.showModal();
+  }
+
+  // 预填充当前页面信息
+  async prefillCurrentPageInfo() {
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs.length > 0) {
+        const tab = tabs[0];
+        const domain = new URL(tab.url).hostname;
+
+        document.getElementById('flowDomain').value = domain;
+        if (!document.getElementById('flowName').value) {
+          document.getElementById('flowName').value = `${domain} 自动化流程`;
+        }
+      }
+    } catch (error) {
+      console.error('获取当前页面信息失败:', error);
+    }
+  }
+
+  // 加载流程列表
+  async loadFlows() {
+    try {
+      const response = await this.sendMessage({ action: 'getAutomationFlows' });
+      if (response.success) {
+        this.flows = response.flows || [];
+      }
+    } catch (error) {
+      console.error('加载流程失败:', error);
+    }
+  }
+
+  // 渲染流程列表
+  renderFlows() {
+    const flowsGrid = document.getElementById('flowsGrid');
+    const emptyState = document.getElementById('emptyState');
+
+    if (this.flows.length === 0) {
+      flowsGrid.style.display = 'none';
+      emptyState.style.display = 'block';
+    } else {
+      flowsGrid.style.display = 'flex';
+      emptyState.style.display = 'none';
+
+      flowsGrid.innerHTML = this.flows.map(flow => this.createFlowCard(flow)).join('');
+      this.bindFlowCardEvents();
+    }
+  }
+
+  // 创建流程卡片
+  createFlowCard(flow) {
+    const stepsCount = flow.steps ? flow.steps.length : 0;
+    const domainDisplay = flow.domain === '*' ? '通用' : flow.domain || '未设置';
+    const statusClass = flow.enabled ? 'enabled' : 'disabled';
+    const statusText = flow.enabled ? '已启用' : '已禁用';
+
+    return `
+      <div class="flow-card" data-flow-id="${flow.id}">
+        <div class="flow-card-header">
+          <div class="flow-info">
+            <h3>${flow.name}</h3>
+            <span class="flow-domain">${domainDisplay}</span>
+          </div>
+          <div class="flow-actions">
+            ${this.createRunButton(flow.id)}
+            <button class="btn-icon edit-flow" data-flow-id="${flow.id}" title="编辑">✏️</button>
+            <button class="btn-icon duplicate-flow" data-flow-id="${flow.id}" title="复制">📋</button>
+            <button class="btn-icon export-flow" data-flow-id="${flow.id}" title="导出">📤</button>
+            <button class="btn-icon delete-flow" data-flow-id="${flow.id}" title="删除">🗑️</button>
+          </div>
+        </div>
+
+        ${flow.description ? `<div class="flow-description">${flow.description}</div>` : ''}
+
+        <div class="flow-stats">
+          <span>📝 ${stepsCount} 个步骤</span>
+          <div class="flow-status">
+            <span class="status-${statusClass}">●</span>
+            <span>${statusText}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // 创建运行按钮
+  createRunButton(flowId) {
+    const isRunning = this.runningFlows.has(flowId);
+    const icon = isRunning ? '🛑' : '▶️';
+    const title = isRunning ? '停止' : '运行';
+    const className = isRunning ? 'stop-flow' : 'run-flow';
+
+    return `<button class="btn-icon ${className}" data-flow-id="${flowId}" title="${title}">${icon}</button>`;
+  }
+
+  // 绑定流程卡片事件
+  bindFlowCardEvents() {
+    // 编辑流程
+    document.querySelectorAll('.edit-flow').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const flowId = e.target.dataset.flowId;
+        this.editFlow(flowId);
+      });
+    });
+
+    // 复制流程
+    document.querySelectorAll('.duplicate-flow').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const flowId = e.target.dataset.flowId;
+        this.duplicateFlow(flowId);
+      });
+    });
+
+    // 导出流程
+    document.querySelectorAll('.export-flow').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const flowId = e.target.dataset.flowId;
+        this.exportFlow(flowId);
+      });
+    });
+
+    // 运行流程
+    document.querySelectorAll('.run-flow').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const flowId = e.target.dataset.flowId;
+        this.runFlow(flowId);
+      });
+    });
+
+    // 停止流程
+    document.querySelectorAll('.stop-flow').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const flowId = e.target.dataset.flowId;
+        this.stopFlow(flowId);
+      });
+    });
+
+    // 删除流程
+    document.querySelectorAll('.delete-flow').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const flowId = e.target.dataset.flowId;
+        this.deleteFlow(flowId);
+      });
+    });
+  }
+
+
+
+  // 编辑流程
+  editFlow(flowId) {
+    const flow = this.flows.find(f => f.id === flowId);
+    if (!flow) return;
+
+    this.currentEditingFlow = flow;
+    this.currentEditingStepIndex = -1;
+    this.stepCounter = 0;
+
+    // 填充表单
+    document.getElementById('flowName').value = flow.name || '';
+    document.getElementById('flowDomain').value = flow.domain || '';
+    document.getElementById('flowDescription').value = flow.description || '';
+
+
+
+    // 渲染步骤
+    this.renderSteps(flow.steps || []);
+
+    document.getElementById('modalTitle').textContent = '编辑流程';
+    this.showModal();
+  }
+
+  // 停止流程
+  async stopFlow(flowId) {
+    try {
+      // 获取当前标签页
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs.length === 0) {
+        this.showMessage('无法获取当前标签页', 'error');
+        return;
+      }
+
+      // 使用正确的消息类型，直接调用automation manager的停止方法
+      const response = await this.sendMessage({
+        action: 'stopAutomationFlow',
+        tabId: tabs[0].id
+      });
+
+      if (response.success) {
+        this.showMessage('流程已停止', 'success');
+        this.addLog(`🛑 停止执行流程: ${flowId}`, 'info');
+
+        // 更新流程运行状态
+        this.runningFlows.delete(flowId);
+        this.updateFlowButton(flowId);
+
+        // 清除执行状态显示
+        this.clearExecutionStatus();
+      } else {
+        this.showMessage('停止失败: ' + response.error, 'error');
+        this.addLog(`❌ 流程停止失败: ${response.error}`, 'error');
+      }
+    } catch (error) {
+      this.showMessage('停止流程失败', 'error');
+      this.addLog(`❌ 停止流程失败: ${error.message}`, 'error');
+    }
+  }
+
+  // 更新流程按钮状态
+  updateFlowButton(flowId) {
+    const flowCard = document.querySelector(`[data-flow-id="${flowId}"]`);
+    if (!flowCard) return;
+
+    const runButton = flowCard.querySelector('.run-flow, .stop-flow');
+    if (!runButton) return;
+
+    const isRunning = this.runningFlows.has(flowId);
+    const icon = isRunning ? '🛑' : '▶️';
+    const title = isRunning ? '停止' : '运行';
+    const className = isRunning ? 'stop-flow' : 'run-flow';
+
+    // 克隆按钮来移除所有事件监听器
+    const newButton = runButton.cloneNode(true);
+
+    // 更新按钮属性
+    newButton.innerHTML = icon;
+    newButton.title = title;
+    newButton.className = `btn-icon ${className}`;
+    newButton.dataset.flowId = flowId;
+
+    // 绑定新的事件
+    if (isRunning) {
+      newButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.stopFlow(flowId);
+      });
+    } else {
+      newButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.runFlow(flowId);
+      });
+    }
+
+    // 替换旧按钮
+    runButton.parentNode.replaceChild(newButton, runButton);
+  }
+
+  // 复制流程
+  duplicateFlow(flowId) {
+    const flow = this.flows.find(f => f.id === flowId);
+    if (!flow) return;
+
+    const duplicatedFlow = {
+      ...flow,
+      id: this.generateId(),
+      name: flow.name + ' (副本)',
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    this.flows.push(duplicatedFlow);
+    this.saveFlowToStorage(duplicatedFlow);
+    this.renderFlows();
+    this.updateDomainFilter();
+    this.showMessage('流程复制成功', 'success');
+  }
+
+  // 导出流程
+  exportFlow(flowId) {
+    const flow = this.flows.find(f => f.id === flowId);
+    if (!flow) {
+      this.showMessage('流程不存在', 'error');
+      return;
+    }
+
+    try {
+      const dataStr = JSON.stringify(flow, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(dataBlob);
+      link.download = `${flow.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}.json`;
+      link.click();
+
+      // 清理URL对象
+      URL.revokeObjectURL(link.href);
+
+      this.showMessage('流程导出成功', 'success');
+    } catch (error) {
+      this.showMessage('流程导出失败: ' + error.message, 'error');
+    }
+  }
+
+  // 删除流程
+  async deleteFlow(flowId) {
+    const flow = this.flows.find(f => f.id === flowId);
+    if (!flow) return;
+
+    if (!confirm(`确定要删除流程"${flow.name}"吗？此操作不可撤销。`)) {
+      return;
+    }
+
+    try {
+      const response = await this.sendMessage({
+        action: 'deleteAutomationFlow',
+        flowId: flowId
+      });
+
+      if (response.success) {
+        this.flows = this.flows.filter(f => f.id !== flowId);
+        this.renderFlows();
+        this.updateDomainFilter();
+        this.showMessage('流程删除成功', 'success');
+      } else {
+        this.showMessage('删除失败: ' + response.error, 'error');
+      }
+    } catch (error) {
+      this.showMessage('删除失败', 'error');
+    }
+  }
+
+  // 添加步骤
+  addStep() {
+    // 收起所有现有步骤
+    this.collapseAllSteps();
+
+    this.stepCounter++;
+    const stepIndex = this.stepCounter;
+
+    const template = document.getElementById('stepTemplate');
+    const stepElement = template.content.cloneNode(true);
+
+    // 设置步骤索引
+    const stepItem = stepElement.querySelector('.step-item');
+    stepItem.dataset.stepIndex = stepIndex;
+
+    // 设置步骤编号
+    stepElement.querySelector('.step-number').textContent = stepIndex;
+
+    // 添加到容器
+    const container = document.getElementById('stepsContainer');
+    container.appendChild(stepElement);
+
+    // 获取添加到DOM后的实际元素
+    const addedStepItem = container.lastElementChild;
+
+    // 绑定事件
+    this.bindStepEvents(addedStepItem);
+
+    // 更新步骤类型图标
+    const stepTypeSelect = addedStepItem.querySelector('.step-type');
+    this.updateStepTypeIcon(stepTypeSelect);
+
+    // 更新变量助手
+    this.updateVariableHelpers(addedStepItem);
+
+    // 新步骤保持展开状态（默认不添加collapsed类）
+  }
+
+  // 渲染步骤
+  renderSteps(steps) {
+    const container = document.getElementById('stepsContainer');
+    container.innerHTML = '';
+    this.stepCounter = 0;
+
+    steps.forEach((step, index) => {
+      this.stepCounter++;
+      const template = document.getElementById('stepTemplate');
+      const stepElement = template.content.cloneNode(true);
+
+      // 设置步骤索引
+      const stepItem = stepElement.querySelector('.step-item');
+      stepItem.dataset.stepIndex = this.stepCounter;
+
+      // 填充数据
+      stepElement.querySelector('.step-number').textContent = this.stepCounter;
+      stepElement.querySelector('.step-name').value = step.name || '';
+      stepElement.querySelector('.step-type').value = step.type || 'fillInput';
+      stepElement.querySelector('.step-selector').value = step.selector || '';
+      stepElement.querySelector('.step-value').value = step.value || '';
+      stepElement.querySelector('.step-description').value = step.description || '';
+      stepElement.querySelector('.step-delay').value = step.options?.delay || 500;
+      stepElement.querySelector('.step-timeout').value = step.options?.timeout || 5000;
+      stepElement.querySelector('.step-clear-first').checked = step.options?.clearFirst || false;
+      stepElement.querySelector('.step-scroll-into-view').checked = step.options?.scrollIntoView !== false;
+
+      // 添加到容器
+      container.appendChild(stepElement);
+
+      // 获取添加到DOM后的实际元素
+      const addedStepItem = container.lastElementChild;
+
+      // 编辑流程时默认收起所有步骤
+      addedStepItem.classList.add('collapsed');
+
+      // 绑定事件
+      this.bindStepEvents(addedStepItem);
+
+      // 更新步骤类型图标
+      const stepTypeSelect = addedStepItem.querySelector('.step-type');
+      this.updateStepTypeIcon(stepTypeSelect);
+
+      // 更新变量助手
+      this.updateVariableHelpers(addedStepItem);
+    });
+  }
+
+  // 绑定步骤事件
+  bindStepEvents(stepElement) {
+    // 步骤类型变化
+    stepElement.querySelector('.step-type').addEventListener('change', (e) => {
+      this.updateStepTypeIcon(e.target);
+      this.updateVariableHelpers(e.target.closest('.step-item'));
+    });
+
+    // 移动步骤
+    stepElement.querySelector('.move-up').addEventListener('click', (e) => {
+      this.moveStep(e.target.closest('.step-item'), -1);
+    });
+
+    stepElement.querySelector('.move-down').addEventListener('click', (e) => {
+      this.moveStep(e.target.closest('.step-item'), 1);
+    });
+
+    // 复制步骤
+    stepElement.querySelector('.duplicate').addEventListener('click', (e) => {
+      this.duplicateStep(e.target.closest('.step-item'));
+    });
+
+    // 删除步骤
+    stepElement.querySelector('.delete').addEventListener('click', (e) => {
+      this.deleteStep(e.target.closest('.step-item'));
+    });
+
+    // 选择器助手
+    stepElement.querySelector('.selector-helper').addEventListener('click', (e) => {
+      const button = e.target;
+      if (button.disabled) {
+        e.preventDefault();
+        return;
+      }
+      this.openSelectorHelper(e.target.closest('.step-item'));
+    });
+
+    // 步骤展开/收起
+    stepElement.querySelector('.step-toggle').addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleStep(e.target.closest('.step-item'));
+    });
+
+    // 变量助手事件
+    this.bindVariableHelperEvents(stepElement);
+    this.updateVariableHelpers(stepElement.querySelector('.step-item') || stepElement);
+  }
+
+  // 更新步骤类型图标
+  updateStepTypeIcon(selectElement) {
+    if (!selectElement) return;
+
+    const stepItem = selectElement.closest('.step-item');
+    if (!stepItem) return;
+
+    const iconElement = stepItem.querySelector('.step-type-icon');
+    if (!iconElement) return;
+
+    const icons = {
+      fillInput: '📝',
+      clickButton: '👆',
+      waitForElement: '⏳',
+      humanVerification: '🔐'
+      // delay: '⏱️',
+      // scroll: '📜',
+      // hover: '🖱️',
+      // selectOption: '📋',
+      // conditional: '🔀'
+    };
+
+    iconElement.textContent = icons[selectElement.value] || '📝';
+
+    // 根据步骤类型控制字段启用状态
+    this.updateStepFieldsState(stepItem, selectElement.value);
+  }
+
+  // 绑定变量助手事件
+  bindVariableHelperEvents(stepElement) {
+    const stepItem = stepElement.querySelector('.step-item') || stepElement;
+
+    // 变量插入按钮
+    const variableButtons = stepItem.querySelectorAll('.btn-variable');
+    variableButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const variable = e.target.dataset.variable;
+        const valueInput = stepItem.querySelector('.step-value');
+        if (valueInput && variable) {
+          this.insertVariableAtCursor(valueInput, variable);
+        }
+      });
+    });
+
+    // 帮助按钮
+    const helpButton = stepItem.querySelector('.btn-help');
+    if (helpButton) {
+      helpButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.showVariableHelp();
+      });
+    }
+  }
+
+  // 更新变量助手显示状态
+  updateVariableHelpers(stepItem) {
+    const stepType = stepItem.querySelector('.step-type').value;
+    const variableHelpers = stepItem.querySelector('.variable-helpers');
+
+    if (variableHelpers) {
+      // 只在填充输入框类型时显示变量助手
+      if (stepType === 'fillInput') {
+        variableHelpers.style.display = 'flex';
+      } else {
+        variableHelpers.style.display = 'none';
+      }
+    }
+  }
+
+  // 替换输入框内容为变量
+  insertVariableAtCursor(input, variable) {
+    input.value = variable;
+    input.focus();
+    input.setSelectionRange(variable.length, variable.length);
+
+    // 触发input事件
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  // 显示变量帮助
+  showVariableHelp() {
+    document.getElementById('variableHelpModal').style.display = 'block';
+  }
+
+  // 根据步骤类型更新字段启用状态
+  updateStepFieldsState(stepItem, stepType) {
+    const selectorInput = stepItem.querySelector('.step-selector');
+    const selectorHelper = stepItem.querySelector('.selector-helper');
+
+    if (!selectorInput || !selectorHelper) return;
+
+    if (stepType === 'humanVerification') {
+      // 人机验证步骤：禁用选择器相关字段
+      selectorInput.disabled = true;
+      selectorInput.style.backgroundColor = '#f5f5f5';
+      selectorInput.style.color = '#999';
+      selectorInput.placeholder = '人机验证步骤无需设置选择器';
+
+      selectorHelper.disabled = true;
+      selectorHelper.style.backgroundColor = '#f5f5f5';
+      selectorHelper.style.color = '#999';
+      selectorHelper.style.cursor = 'not-allowed';
+      selectorHelper.title = '人机验证步骤无需选择器助手';
+    } else {
+      // 其他步骤类型：启用选择器相关字段
+      selectorInput.disabled = false;
+      selectorInput.style.backgroundColor = '';
+      selectorInput.style.color = '';
+      selectorInput.placeholder = 'CSS选择器或XPath';
+
+      selectorHelper.disabled = false;
+      selectorHelper.style.backgroundColor = '';
+      selectorHelper.style.color = '';
+      selectorHelper.style.cursor = 'pointer';
+      selectorHelper.title = '选择器助手';
+    }
+  }
+
+  // 移动步骤
+  moveStep(stepItem, direction) {
+    const container = stepItem.parentNode;
+    const steps = Array.from(container.children);
+    const currentIndex = steps.indexOf(stepItem);
+    const newIndex = currentIndex + direction;
+
+    if (newIndex < 0 || newIndex >= steps.length) return;
+
+    if (direction === -1) {
+      container.insertBefore(stepItem, steps[newIndex]);
+    } else {
+      container.insertBefore(stepItem, steps[newIndex].nextSibling);
+    }
+
+    this.updateStepNumbers();
+  }
+
+  // 复制步骤
+  duplicateStep(stepItem) {
+    const newStep = stepItem.cloneNode(true);
+    this.stepCounter++;
+    newStep.dataset.stepIndex = this.stepCounter;
+
+    // 重新绑定事件
+    this.bindStepEvents(newStep);
+
+    stepItem.parentNode.insertBefore(newStep, stepItem.nextSibling);
+    this.updateStepNumbers();
+  }
+
+  // 删除步骤
+  deleteStep(stepItem) {
+    if (stepItem.parentNode.children.length <= 1) {
+      alert('至少需要保留一个步骤');
+      return;
+    }
+
+    stepItem.remove();
+    this.updateStepNumbers();
+  }
+
+  // 切换步骤展开/收起状态
+  toggleStep(stepElement) {
+    if (!stepElement) return;
+
+    const isCollapsed = stepElement.classList.contains('collapsed');
+    if (isCollapsed) {
+      this.expandStep(stepElement);
+    } else {
+      this.collapseStep(stepElement);
+    }
+  }
+
+  // 展开步骤
+  expandStep(stepElement) {
+    if (!stepElement) return;
+    stepElement.classList.remove('collapsed');
+  }
+
+  // 收起步骤
+  collapseStep(stepElement) {
+    if (!stepElement) return;
+    stepElement.classList.add('collapsed');
+  }
+
+  // 收起所有步骤
+  collapseAllSteps() {
+    const stepElements = document.querySelectorAll('.step-item');
+    stepElements.forEach(step => {
+      this.collapseStep(step);
+    });
+  }
+
+  // 展开所有步骤
+  expandAllSteps() {
+    const stepElements = document.querySelectorAll('.step-item');
+    stepElements.forEach(step => {
+      this.expandStep(step);
+    });
+  }
+
+  // 更新步骤编号
+  updateStepNumbers() {
+    const steps = document.querySelectorAll('.step-item');
+    steps.forEach((step, index) => {
+      step.querySelector('.step-number').textContent = index + 1;
+    });
+  }
+
+  // 运行流程
+  async runFlow(flowId) {
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs.length === 0) {
+        this.showMessage('无法获取当前标签页', 'error');
+        return;
+      }
+
+      const response = await this.sendMessage({
+        action: 'startAutomationFlow',
+        flowId: flowId,
+        tabId: tabs[0].id
+      });
+
+      if (response.success) {
+        this.showMessage('自动化流程已开始，请保持侧边栏打开以查看执行进度', 'success');
+        this.addLog(`🚀 开始执行流程: ${flowId}`, 'info');
+
+        // 更新流程运行状态
+        this.runningFlows.add(flowId);
+        this.updateFlowButton(flowId);
+
+        // 设置执行状态监听
+        this.startExecutionMonitoring(flowId);
+      } else {
+        this.showMessage('启动失败: ' + response.error, 'error');
+        this.addLog(`❌ 流程启动失败: ${response.error}`, 'error');
+      }
+    } catch (error) {
+      this.showMessage('启动流程失败', 'error');
+    }
+  }
+
+  // 打开选择器助手
+  async openSelectorHelper(stepItem) {
+    try {
+      // 存储当前编辑的步骤项，用于后续填充选择器
+      this.currentEditingStepItem = stepItem;
+      console.log('🎯 设置当前编辑步骤:', stepItem.dataset.stepId || 'unknown');
+
+      // 立即显示启动提示
+      this.showMessage('选择器助手正在初始化，请稍后...', 'info');
+
+      // 监听元素选择结果
+      this.listenForElementSelection();
+
+      // 获取当前流程的适用域名
+      const targetDomain = this.getCurrentFlowDomain();
+
+      // 通过background script启动选择器助手
+      const response = await this.sendMessage({
+        action: 'startElementSelectionForAllTabs',
+        targetDomain: targetDomain
+      });
+
+      if (response.success) {
+        const message = response.successCount > 0 ?
+          `选择器助手已在 ${response.successCount} 个标签页中激活，请切换到目标网页并点击要选择的元素` :
+          '选择器助手已启动，如果无法使用请刷新目标页面后再试';
+        this.showMessage(message, 'success');
+      } else {
+        this.showMessage('启动选择器助手失败: ' + response.error, 'error');
+      }
+    } catch (error) {
+      console.error('打开选择器助手失败:', error);
+      this.showMessage('打开选择器助手失败', 'error');
+    }
+  }
+
+  // 获取当前流程的适用域名
+  getCurrentFlowDomain() {
+    console.log('🎯 获取当前流程域名，currentEditingFlow:', this.currentEditingFlow);
+
+    // 优先从当前编辑的流程获取域名
+    if (this.currentEditingFlow && this.currentEditingFlow.domain) {
+      console.log('🎯 从currentEditingFlow获取域名:', this.currentEditingFlow.domain);
+      return this.currentEditingFlow.domain;
+    }
+
+    // 尝试从表单中获取域名（如果正在编辑流程）
+    const domainInput = document.getElementById('flowDomain');
+    if (domainInput && domainInput.value.trim()) {
+      const domain = domainInput.value.trim();
+      console.log('🎯 从表单获取域名:', domain);
+      return domain === '*' ? null : domain; // '*' 表示通用流程，等同于null
+    }
+
+    // 尝试从页面中获取域名信息
+    const domainElement = document.querySelector('[data-flow-domain]');
+    if (domainElement) {
+      const domain = domainElement.dataset.flowDomain;
+      console.log('🎯 从页面元素获取域名:', domain);
+      return domain;
+    }
+
+    console.log('⚠️ 未找到流程域名，将在所有标签页中启动');
+    return null; // 如果没有指定域名，返回null表示在所有标签页中启动
+  }
+
+  // 监听元素选择结果
+  listenForElementSelection() {
+    // 这个方法在构造函数中已经设置了消息监听器
+    // 这里只是为了保持接口一致性
+  }
+
+  // 处理元素选择结果
+  handleElementSelectionResult(result) {
+    if (!result || !result.selectors) return;
+
+    const bestSelector = result.selectors.find(s => s.isUnique && s.isValid) || result.selectors[0];
+    if (bestSelector && this.currentEditingStepItem) {
+      // 填充选择器到当前编辑的步骤
+      const selectorInput = this.currentEditingStepItem.querySelector('.step-selector');
+      if (selectorInput) {
+        selectorInput.value = bestSelector.selector;
+        this.showMessage(`已生成选择器: ${bestSelector.selector}`, 'success');
+      }
+
+      // 注意：不要在这里清除currentEditingStepItem，让用户可以继续选择其他选择器
+      // this.currentEditingStepItem = null; // 移除这行，保持状态直到用户明确完成选择
+    }
+  }
+
+  // 保存流程
+  async saveFlow() {
+    const flowName = document.getElementById('flowName').value.trim();
+    if (!flowName) {
+      this.showMessage('请输入流程名称', 'error');
+      return;
+    }
+
+    // 收集步骤数据
+    const steps = this.collectStepsData();
+    if (steps.length === 0) {
+      this.showMessage('请至少添加一个步骤', 'error');
+      return;
+    }
+
+    const flowData = {
+      id: this.currentEditingFlow ? this.currentEditingFlow.id : this.generateId(),
+      name: flowName,
+      domain: document.getElementById('flowDomain').value.trim() || '*',
+      description: document.getElementById('flowDescription').value.trim(),
+      steps: steps,
+
+      enabled: true,
+      createdAt: this.currentEditingFlow ? this.currentEditingFlow.createdAt : Date.now(),
+      updatedAt: Date.now()
+    };
+
+    try {
+      const response = await this.sendMessage({
+        action: 'saveAutomationFlow',
+        flow: flowData
+      });
+
+      if (response.success) {
+        if (this.currentEditingFlow) {
+          const index = this.flows.findIndex(f => f.id === this.currentEditingFlow.id);
+          if (index !== -1) {
+            this.flows[index] = flowData;
+          }
+        } else {
+          this.flows.push(flowData);
+        }
+
+        this.renderFlows();
+        this.updateDomainFilter();
+        this.closeModal();
+        this.showMessage('流程保存成功', 'success');
+      } else {
+        this.showMessage('保存失败: ' + response.error, 'error');
+      }
+    } catch (error) {
+      this.showMessage('保存失败', 'error');
+    }
+  }
+
+  // 收集步骤数据
+  collectStepsData() {
+    const steps = [];
+    const stepItems = document.querySelectorAll('.step-item');
+
+    stepItems.forEach((stepItem, index) => {
+      const stepData = {
+        id: `step-${index + 1}`,
+        name: stepItem.querySelector('.step-name').value.trim() || `步骤 ${index + 1}`,
+        type: stepItem.querySelector('.step-type').value,
+        selector: stepItem.querySelector('.step-selector').value.trim(),
+        value: stepItem.querySelector('.step-value').value.trim(),
+        description: stepItem.querySelector('.step-description').value.trim(),
+        options: {
+          delay: parseInt(stepItem.querySelector('.step-delay').value) || 500,
+          timeout: parseInt(stepItem.querySelector('.step-timeout').value) || 5000,
+          clearFirst: stepItem.querySelector('.step-clear-first').checked,
+          scrollIntoView: stepItem.querySelector('.step-scroll-into-view').checked
+        }
+      };
+
+      steps.push(stepData);
+    });
+
+    return steps;
+  }
+
+
+
+
+
+
+
+
+
+  // 显示模态框
+  showModal() {
+    const modal = document.getElementById('flowEditorModal');
+    modal.style.display = 'block';
+
+    // 添加拖动功能
+    this.makeDraggable(modal);
+  }
+
+  // 关闭模态框
+  closeModal() {
+    document.getElementById('flowEditorModal').style.display = 'none';
+  }
+
+  // 使模态框可拖动
+  makeDraggable(modal) {
+    const modalContent = modal.querySelector('.modal-content');
+    const modalHeader = modal.querySelector('.modal-header');
+
+    if (!modalContent || !modalHeader) return;
+
+    let isDragging = false;
+    let startX, startY, startLeft, startTop;
+
+    modalHeader.addEventListener('mousedown', (e) => {
+      // 避免在关闭按钮上触发拖动
+      if (e.target.classList.contains('modal-close')) return;
+
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+
+      // 获取当前位置
+      const rect = modalContent.getBoundingClientRect();
+      startLeft = rect.left;
+      startTop = rect.top;
+
+      // 改变定位方式
+      modalContent.style.position = 'fixed';
+      modalContent.style.left = startLeft + 'px';
+      modalContent.style.top = startTop + 'px';
+      modalContent.style.transform = 'none';
+      modalContent.style.margin = '0';
+
+      // 添加拖动样式
+      modalHeader.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
+
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+
+      const newLeft = startLeft + deltaX;
+      const newTop = startTop + deltaY;
+
+      // 限制在视窗内
+      const maxLeft = window.innerWidth - modalContent.offsetWidth;
+      const maxTop = window.innerHeight - modalContent.offsetHeight;
+
+      modalContent.style.left = Math.max(0, Math.min(newLeft, maxLeft)) + 'px';
+      modalContent.style.top = Math.max(0, Math.min(newTop, maxTop)) + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        modalHeader.style.cursor = 'move';
+        document.body.style.userSelect = '';
+      }
+    });
+  }
+
+  // 测试流程
+  async testFlow() {
+    const flowData = this.collectStepsData();
+    if (flowData.length === 0) {
+      this.showMessage('请至少添加一个步骤', 'error');
+      return;
+    }
+
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs.length === 0) {
+        this.showMessage('无法获取当前标签页', 'error');
+        return;
+      }
+
+      // 创建临时流程用于测试
+      const testFlow = {
+        id: 'test-flow',
+        name: '测试流程',
+        steps: flowData,
+
+      };
+
+      const response = await this.sendMessage({
+        action: 'startAutomationFlow',
+        flowId: 'test-flow',
+        tabId: tabs[0].id,
+        testFlow: testFlow
+      });
+
+      if (response.success) {
+        this.showMessage('测试流程已开始', 'success');
+      } else {
+        this.showMessage('测试失败: ' + response.error, 'error');
+      }
+    } catch (error) {
+      this.showMessage('测试失败', 'error');
+    }
+  }
+
+  // 过滤流程
+  filterFlows() {
+    const searchTerm = document.getElementById('searchFlow').value.toLowerCase();
+    const domainFilter = document.getElementById('filterDomain').value;
+
+    let filteredFlows = this.flows;
+
+    // 域名过滤
+    if (domainFilter) {
+      filteredFlows = filteredFlows.filter(flow => flow.domain === domainFilter);
+    }
+
+    // 搜索过滤
+    if (searchTerm) {
+      filteredFlows = filteredFlows.filter(flow =>
+        flow.name.toLowerCase().includes(searchTerm) ||
+        (flow.description && flow.description.toLowerCase().includes(searchTerm)) ||
+        (flow.domain && flow.domain.toLowerCase().includes(searchTerm))
+      );
+    }
+
+    // 渲染过滤后的流程
+    const flowsGrid = document.getElementById('flowsGrid');
+    const emptyState = document.getElementById('emptyState');
+
+    if (filteredFlows.length === 0) {
+      flowsGrid.style.display = 'none';
+      emptyState.style.display = 'block';
+      emptyState.querySelector('h3').textContent = searchTerm || domainFilter ? '没有找到匹配的流程' : '还没有配置任何流程';
+    } else {
+      flowsGrid.style.display = 'flex';
+      emptyState.style.display = 'none';
+
+      flowsGrid.innerHTML = filteredFlows.map(flow => this.createFlowCard(flow)).join('');
+      this.bindFlowCardEvents();
+    }
+  }
+
+  // 更新域名过滤器
+  updateDomainFilter() {
+    const filterSelect = document.getElementById('filterDomain');
+    const domains = [...new Set(this.flows.map(flow => flow.domain).filter(Boolean))];
+
+    // 保存当前选择
+    const currentValue = filterSelect.value;
+
+    // 清空并重新填充选项
+    filterSelect.innerHTML = '<option value="">所有域名</option><option value="*">通用流程</option>';
+
+    domains.forEach(domain => {
+      if (domain !== '*') {
+        const option = document.createElement('option');
+        option.value = domain;
+        option.textContent = domain;
+        filterSelect.appendChild(option);
+      }
+    });
+
+    // 恢复选择
+    filterSelect.value = currentValue;
+  }
+
+  // 导入流程
+  importFlow() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const flowData = JSON.parse(e.target.result);
+            flowData.id = this.generateId();
+            flowData.createdAt = Date.now();
+            flowData.updatedAt = Date.now();
+
+            this.flows.push(flowData);
+            this.saveFlowToStorage(flowData);
+            this.renderFlows();
+            this.updateDomainFilter();
+            this.showMessage('流程导入成功', 'success');
+          } catch (error) {
+            this.showMessage('导入失败：文件格式错误', 'error');
+          }
+        };
+        reader.readAsText(file);
+      }
+    };
+    input.click();
+  }
+
+  // 保存流程到存储
+  async saveFlowToStorage(flow) {
+    try {
+      await this.sendMessage({
+        action: 'saveAutomationFlow',
+        flow: flow
+      });
+    } catch (error) {
+      console.error('保存流程到存储失败:', error);
+    }
+  }
+
+
+
+  // 显示消息
+  showMessage(message, type = 'info') {
+    // 创建消息提示
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message message-${type}`;
+    messageDiv.textContent = message;
+    messageDiv.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 4px;
+      color: white;
+      font-size: 12px;
+      z-index: 10000;
+      max-width: 300px;
+      word-wrap: break-word;
+    `;
+
+    // 设置背景色
+    const colors = {
+      success: '#4caf50',
+      error: '#f44336',
+      warning: '#ff9800',
+      info: '#2196f3'
+    };
+    messageDiv.style.backgroundColor = colors[type] || colors.info;
+
+    document.body.appendChild(messageDiv);
+
+    // 3秒后自动移除
+    setTimeout(() => {
+      if (messageDiv.parentNode) {
+        messageDiv.parentNode.removeChild(messageDiv);
+      }
+    }, 3000);
+
+    console.log(`[${type.toUpperCase()}] ${message}`);
+  }
+
+  // 发送消息到background
+  async sendMessage(message) {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(message, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  }
+
+  // 开始执行监控
+  startExecutionMonitoring(flowId) {
+    this.currentExecutingFlowId = flowId;
+    this.executionStartTime = Date.now();
+
+    // 显示执行状态
+    this.showExecutionStatus('执行中...', 'info');
+  }
+
+  // 处理自动化进度
+  handleAutomationProgress(message) {
+    if (message.flowId !== this.currentExecutingFlowId) return;
+
+    const { step, progress, status } = message;
+    let statusText = '';
+
+    if (step) {
+      statusText = `执行步骤 ${step.index + 1}: ${step.name}`;
+    } else if (progress) {
+      statusText = `进度: ${progress.current}/${progress.total}`;
+    }
+
+    this.showExecutionStatus(statusText, status === 'error' ? 'error' : 'info');
+  }
+
+  // 处理自动化完成
+  handleAutomationComplete(message) {
+    if (message.flowId !== this.currentExecutingFlowId) return;
+
+    const flowId = this.currentExecutingFlowId;
+    this.currentExecutingFlowId = null;
+    const duration = Date.now() - this.executionStartTime;
+    const durationText = `(耗时 ${Math.round(duration / 1000)}秒)`;
+
+    // 更新流程运行状态
+    this.runningFlows.delete(flowId);
+    this.updateFlowButton(flowId);
+
+    if (message.success) {
+      this.showExecutionStatus(`✅ 执行成功 ${durationText}`, 'success');
+      this.showMessage('自动化流程执行成功', 'success');
+    } else {
+      this.showExecutionStatus(`❌ 执行失败 ${durationText}`, 'error');
+      this.showMessage('自动化流程执行失败: ' + (message.error || '未知错误'), 'error');
+    }
+
+    // 3秒后清除状态
+    setTimeout(() => {
+      this.clearExecutionStatus();
+    }, 3000);
+  }
+
+  // 处理自动化停止
+  handleAutomationStopped(message) {
+    if (message.executionId && this.currentExecutingFlowId) {
+      const flowId = this.currentExecutingFlowId;
+      this.currentExecutingFlowId = null;
+
+      // 更新流程运行状态
+      this.runningFlows.delete(flowId);
+      this.updateFlowButton(flowId);
+
+      // 显示停止状态
+      this.showExecutionStatus('🛑 流程已停止', 'warning');
+      this.showMessage('自动化流程已停止', 'info');
+
+      // 3秒后清除状态
+      setTimeout(() => {
+        this.clearExecutionStatus();
+      }, 3000);
+    }
+  }
+
+  // 显示执行状态
+  showExecutionStatus(message, type) {
+    let statusDiv = document.getElementById('executionStatus');
+    if (!statusDiv) {
+      statusDiv = document.createElement('div');
+      statusDiv.id = 'executionStatus';
+      statusDiv.style.cssText = `
+        position: fixed;
+        top: 60px;
+        left: 10px;
+        right: 10px;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 11px;
+        z-index: 1000;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      `;
+      document.body.appendChild(statusDiv);
+    }
+
+    const colors = {
+      success: '#4caf50',
+      error: '#f44336',
+      warning: '#ff9800',
+      info: '#2196f3'
+    };
+
+    statusDiv.textContent = message;
+    statusDiv.style.backgroundColor = colors[type] || colors.info;
+    statusDiv.style.color = 'white';
+    statusDiv.style.display = 'block';
+  }
+
+  // 清除执行状态
+  clearExecutionStatus() {
+    const statusDiv = document.getElementById('executionStatus');
+    if (statusDiv) {
+      statusDiv.style.display = 'none';
+    }
+  }
+
+  // 生成ID
+  generateId() {
+    return `flow_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+  }
+
+  // 页面导航方法
+  bindNavigationListeners() {
+    // 快速操作按钮
+    document.getElementById('emailToolBtn')?.addEventListener('click', () => {
+      this.showPage('emailTool');
+    });
+
+    document.getElementById('flowManagerBtn')?.addEventListener('click', () => {
+      this.showPage('flowManager');
+    });
+
+    document.getElementById('settingsBtn')?.addEventListener('click', () => {
+      this.showPage('settings');
+    });
+
+    // 返回按钮
+    document.getElementById('backBtn')?.addEventListener('click', () => {
+      this.goBack();
+    });
+
+    // 页面返回首页按钮
+    document.getElementById('emailToolBackBtn')?.addEventListener('click', () => {
+      this.showPage('home');
+    });
+
+    document.getElementById('flowManagerBackBtn')?.addEventListener('click', () => {
+      this.showPage('home');
+    });
+
+    document.getElementById('settingsBackBtn')?.addEventListener('click', () => {
+      this.showPage('home');
+    });
+
+    // 首页邮箱和验证码功能
+    document.getElementById('homeGenerateEmailBtn')?.addEventListener('click', () => {
+      this.generateEmailForHome();
+    });
+
+    document.getElementById('homeGetCodeBtn')?.addEventListener('click', () => {
+      this.getCodeForHome();
+    });
+
+    document.getElementById('homeStopCodeBtn')?.addEventListener('click', () => {
+      this.stopGettingCodeForHome();
+    });
+
+
+
+    // 邮箱工具功能
+    document.getElementById('generateEmailBtn')?.addEventListener('click', () => {
+      this.generateEmail();
+    });
+
+    document.getElementById('copyEmailBtn')?.addEventListener('click', () => {
+      this.copyEmail();
+    });
+
+    // 设置功能
+    document.getElementById('saveSettingsBtn')?.addEventListener('click', () => {
+      this.saveSettings();
+    });
+
+    document.getElementById('resetSettingsBtn')?.addEventListener('click', () => {
+      this.resetSettings();
+    });
+
+    document.getElementById('exportDataBtn')?.addEventListener('click', () => {
+      this.exportData();
+    });
+
+    document.getElementById('importDataBtn')?.addEventListener('click', () => {
+      this.importData();
+    });
+
+    document.getElementById('clearDataBtn')?.addEventListener('click', () => {
+      this.clearData();
+    });
+
+    // 帮助图标点击事件
+    document.querySelector('.help-icon')?.addEventListener('click', () => {
+      this.showCloudflareGuide();
+    });
+
+    // 模态框关闭事件
+    document.addEventListener('click', (e) => {
+      // 关闭按钮点击
+      if (e.target.classList.contains('modal-close')) {
+        const modal = e.target.closest('.modal');
+        if (modal) {
+          modal.style.display = 'none';
+        }
+      }
+      // 点击模态框背景关闭
+      if (e.target.classList.contains('modal')) {
+        e.target.style.display = 'none';
+      }
+    });
+
+    // 日志功能
+    document.getElementById('clearLogsBtn')?.addEventListener('click', () => {
+      this.clearLogs();
+    });
+
+    document.getElementById('toggleLogsBtn')?.addEventListener('click', () => {
+      this.toggleLogs();
+    });
+
+    // 流程管理页面的日志功能
+    document.getElementById('clearLogsBtn2')?.addEventListener('click', () => {
+      this.clearLogs();
+    });
+
+    document.getElementById('toggleLogsBtn2')?.addEventListener('click', () => {
+      this.toggleLogs('logsContainer2', 'toggleLogsBtn2');
+    });
+
+    // 流程控制功能
+    document.getElementById('stopFlowBtn')?.addEventListener('click', () => {
+      this.stopAutomationFlow();
+    });
+  }
+
+  // 显示页面
+  showPage(pageId) {
+    // 隐藏所有页面
+    document.querySelectorAll('.page').forEach(page => {
+      page.classList.remove('active');
+    });
+
+    // 显示目标页面
+    const targetPage = document.getElementById(pageId + 'Page');
+    if (targetPage) {
+      targetPage.classList.add('active');
+    }
+
+    // 更新导航状态
+    if (pageId !== 'home') {
+      this.pageHistory.push(this.currentPage);
+      // 注意：这里不需要通用的backBtn，每个页面都有自己的返回按钮
+      this.updateHeaderForPage(pageId);
+    } else {
+      this.pageHistory = [];
+      this.updateHeaderForPage('home');
+    }
+
+    this.currentPage = pageId;
+
+    // 页面特定的初始化
+    if (pageId === 'settings') {
+      this.loadSettings();
+    } else if (pageId === 'emailTool') {
+      this.loadEmailHistory();
+    }
+  }
+
+  // 返回上一页
+  goBack() {
+    if (this.pageHistory.length > 0) {
+      const previousPage = this.pageHistory.pop();
+      this.showPage(previousPage);
+    } else {
+      this.showPage('home');
+    }
+  }
+
+  // 更新页面标题和操作
+  updateHeaderForPage(pageId) {
+    // 当前HTML结构中没有通用的pageTitle和headerActions元素
+    // 每个页面都有自己的标题，不需要动态更新
+    // 这个方法保留为空，避免JavaScript错误
+  }
+
+  // 生成邮箱
+  async generateEmail() {
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'generateEmail' });
+      if (response.success) {
+        document.getElementById('generatedEmail').value = response.email;
+
+        // 自动复制到剪切板
+        try {
+          await navigator.clipboard.writeText(response.email);
+          this.showNotification('邮箱已生成并复制到剪切板', 'success');
+        } catch (clipboardError) {
+          this.showNotification('邮箱已生成，但复制失败', 'warning');
+        }
+
+        this.loadEmailHistory();
+      } else {
+        this.showNotification('生成邮箱失败: ' + response.error, 'error');
+      }
+    } catch (error) {
+      this.showNotification('生成邮箱失败: ' + error.message, 'error');
+    }
+  }
+
+  // 复制邮箱
+  copyEmail() {
+    const emailInput = document.getElementById('generatedEmail');
+    if (emailInput.value) {
+      navigator.clipboard.writeText(emailInput.value).then(() => {
+        this.showNotification('邮箱地址已复制', 'success');
+      });
+    }
+  }
+
+  // 加载邮箱历史
+  async loadEmailHistory() {
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'getHistory', type: 'email' });
+      if (response.success) {
+        this.renderEmailHistory(response.history);
+      }
+    } catch (error) {
+      console.error('加载邮箱历史失败:', error);
+    }
+  }
+
+  // 渲染邮箱历史
+  renderEmailHistory(history) {
+    const container = document.getElementById('emailHistory');
+    const clearAllBtn = document.getElementById('clearAllEmailHistoryBtn');
+
+    if (!container) return;
+
+    if (!history || history.length === 0) {
+      container.innerHTML = `
+        <div class="empty-message">
+          <div class="empty-message-text">暂无邮箱历史记录</div>
+          <div class="empty-message-desc">您还没有生成过任何临时邮箱<br>生成邮箱后，历史记录将在这里显示</div>
+        </div>
+      `;
+      clearAllBtn.style.display = 'none';
+      return;
+    }
+
+    // 显示清除全部按钮
+    clearAllBtn.style.display = 'inline-block';
+
+    container.innerHTML = history.slice(0, 20).map(item => `
+      <div class="email-history-item" data-id="${item.id}">
+        <div class="email-info">
+          <span class="email-address" title="${item.email}">${item.email}</span>
+          <span class="email-time">${new Date(item.timestamp).toLocaleString()}</span>
+        </div>
+        <div class="email-actions">
+          <button class="btn-icon copy-email-btn" title="复制邮箱" data-email="${item.email}">📋</button>
+          <button class="btn-icon delete-email-btn" title="删除记录" data-id="${item.id}">🗑️</button>
+        </div>
+      </div>
+    `).join('');
+
+    // 绑定事件监听器
+    this.bindEmailHistoryEvents();
+  }
+
+  // 导出数据
+  async exportData() {
+    try {
+      const flows = await this.loadFlows();
+      const data = {
+        flows: flows,
+        exportTime: new Date().toISOString(),
+        version: '1.0'
+      };
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `automation-flows-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      this.showNotification('数据导出成功', 'success');
+    } catch (error) {
+      this.showNotification('导出失败: ' + error.message, 'error');
+    }
+  }
+
+  // 导入数据
+  importData() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        if (data.flows && Array.isArray(data.flows)) {
+          for (const flow of data.flows) {
+            await chrome.runtime.sendMessage({
+              action: 'saveAutomationFlow',
+              flow: flow
+            });
+          }
+          await this.loadFlows();
+          this.renderFlows();
+          this.showNotification('数据导入成功', 'success');
+        } else {
+          this.showNotification('无效的数据格式', 'error');
+        }
+      } catch (error) {
+        this.showNotification('导入失败: ' + error.message, 'error');
+      }
+    };
+    input.click();
+  }
+
+  // 绑定消息监听
+  bindMessageListeners() {
+    // 监听来自background的消息
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.action === 'sidebarNavigate') {
+        this.showPage(message.page);
+        sendResponse({ success: true });
+      } else if (message.action === 'addAutomationLog') {
+        this.addLog(message.message, message.logType);
+        sendResponse({ success: true });
+      } else if (message.action === 'elementPickerResult') {
+        this.handleElementPickerResult(message.data);
+        sendResponse({ success: true });
+      } else if (message.action === 'elementSelectionResult') {
+        this.handleElementSelectionResult(message.result);
+        sendResponse({ success: true });
+      } else if (message.action === 'automationProgress') {
+        this.handleAutomationProgress(message);
+        sendResponse({ success: true });
+      } else if (message.type === 'automationCompleted') {
+        this.handleAutomationComplete(message);
+        sendResponse({ success: true });
+      } else if (message.type === 'automationStopped') {
+        this.handleAutomationStopped(message);
+        sendResponse({ success: true });
+      } else if (message.type === 'codeProgress') {
+        this.handleCodeProgress(message.progress);
+        sendResponse({ success: true });
+      }
+      return true;
+    });
+
+    // 监听storage变化，获取自动化日志
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+      if (namespace === 'local' && changes.automationLogs) {
+        const newLogs = changes.automationLogs.newValue || [];
+        const oldLogs = changes.automationLogs.oldValue || [];
+
+        // 找到新增的日志
+        const newLogEntries = newLogs.filter(newLog =>
+          !oldLogs.some(oldLog => oldLog.id === newLog.id)
+        );
+
+        // 按时间戳排序新日志，然后添加到界面
+        newLogEntries
+          .sort((a, b) => a.timestamp - b.timestamp) // 按时间戳升序排序
+          .forEach(logEntry => {
+            this.addLog(logEntry.message, logEntry.logType);
+          });
+      }
+    });
+  }
+
+  // 清空数据
+  async clearData() {
+    if (confirm('确定要清空所有数据吗？此操作不可恢复。')) {
+      try {
+        // 清空流程数据
+        for (const flow of this.flows) {
+          await chrome.runtime.sendMessage({
+            action: 'deleteAutomationFlow',
+            flowId: flow.id
+          });
+        }
+
+        // 清空历史数据
+        await chrome.runtime.sendMessage({ action: 'clearHistory' });
+
+        await this.loadFlows();
+        this.renderFlows();
+        this.showNotification('所有数据已清空', 'success');
+      } catch (error) {
+        this.showNotification('清空失败: ' + error.message, 'error');
+      }
+    }
+  }
+
+  // 显示Cloudflare配置指南
+  showCloudflareGuide() {
+    const modal = document.getElementById('cloudflareGuideModal');
+    if (modal) {
+      modal.style.display = 'block';
+
+      // 添加ESC键关闭功能
+      const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+          modal.style.display = 'none';
+          document.removeEventListener('keydown', handleEscape);
+        }
+      };
+      document.addEventListener('keydown', handleEscape);
+    }
+  }
+
+  // 绑定邮箱历史事件
+  bindEmailHistoryEvents() {
+    // 复制邮箱按钮事件
+    document.querySelectorAll('.copy-email-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const email = btn.getAttribute('data-email');
+        this.copyEmailFromHistory(email);
+      });
+    });
+
+    // 删除邮箱按钮事件
+    document.querySelectorAll('.delete-email-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        this.deleteEmailHistoryItem(id);
+      });
+    });
+
+    // 清除全部按钮事件
+    const clearAllBtn = document.getElementById('clearAllEmailHistoryBtn');
+    if (clearAllBtn) {
+      clearAllBtn.onclick = () => this.clearAllEmailHistory();
+    }
+  }
+
+  // 从历史记录复制邮箱
+  async copyEmailFromHistory(email) {
+    try {
+      await navigator.clipboard.writeText(email);
+      this.showNotification('邮箱地址已复制', 'success');
+    } catch (error) {
+      console.error('复制邮箱失败:', error);
+      this.showNotification('复制失败', 'error');
+    }
+  }
+
+  // 删除单个邮箱历史记录
+  async deleteEmailHistoryItem(id) {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'deleteHistoryItem',
+        type: 'email',
+        id: id
+      });
+
+      if (response.success) {
+        this.showNotification('历史记录已删除', 'success');
+        // 重新加载历史记录
+        await this.loadEmailHistory();
+      } else {
+        this.showNotification('删除失败: ' + response.message, 'error');
+      }
+    } catch (error) {
+      console.error('删除邮箱历史记录失败:', error);
+      this.showNotification('删除失败', 'error');
+    }
+  }
+
+  // 清除全部邮箱历史记录
+  async clearAllEmailHistory() {
+    try {
+      // 确认对话框
+      if (!confirm('确定要清除所有邮箱历史记录吗？此操作不可撤销。')) {
+        return;
+      }
+
+      const response = await chrome.runtime.sendMessage({
+        action: 'clearHistory',
+        type: 'email'
+      });
+
+      if (response.success) {
+        this.showNotification('所有邮箱历史记录已清除', 'success');
+        // 重新加载历史记录
+        await this.loadEmailHistory();
+      } else {
+        this.showNotification('清除失败: ' + response.message, 'error');
+      }
+    } catch (error) {
+      console.error('清除邮箱历史记录失败:', error);
+      this.showNotification('清除失败', 'error');
+    }
+  }
+
+  // 首页生成邮箱
+  async generateEmailForHome() {
+    try {
+      this.addLog('开始生成邮箱地址...', 'info');
+      const response = await chrome.runtime.sendMessage({ action: 'generateEmail' });
+      if (response.success) {
+        document.getElementById('homeEmailInput').value = response.email;
+        this.addLog(`邮箱生成成功: ${response.email}`, 'success');
+
+        // 自动复制到剪切板
+        try {
+          await navigator.clipboard.writeText(response.email);
+          this.showNotification('邮箱已生成并复制到剪切板', 'success');
+          this.addLog('邮箱地址已复制到剪切板', 'success');
+        } catch (clipboardError) {
+          this.showNotification('邮箱已生成，但复制失败', 'warning');
+          this.addLog('复制到剪切板失败: ' + clipboardError.message, 'warn');
+        }
+      } else {
+        this.showNotification('生成邮箱失败: ' + response.error, 'error');
+        this.addLog('生成邮箱失败: ' + response.error, 'error');
+      }
+    } catch (error) {
+      this.showNotification('生成邮箱失败: ' + error.message, 'error');
+      this.addLog('生成邮箱异常: ' + error.message, 'error');
+    }
+  }
+
+  // 首页获取验证码
+  async getCodeForHome() {
+    try {
+      // 显示停止按钮，隐藏获取按钮
+      document.getElementById('homeGetCodeBtn').style.display = 'none';
+      document.getElementById('homeStopCodeBtn').style.display = 'inline-block';
+
+      this.addLog('开始获取验证码（使用设置页面配置）...', 'info');
+      const response = await chrome.runtime.sendMessage({
+        action: 'getVerificationCode',
+        maxRetries: 10,
+        retryInterval: 3000
+      });
+
+      if (response.success) {
+        document.getElementById('homeCodeInput').value = response.code;
+        this.addLog(`验证码获取成功: ${response.code}`, 'success');
+
+        // 自动复制到剪切板
+        try {
+          await navigator.clipboard.writeText(response.code);
+          this.showNotification('验证码已获取并复制到剪切板', 'success');
+          this.addLog('验证码已复制到剪切板', 'success');
+        } catch (clipboardError) {
+          this.showNotification('验证码已获取，但复制失败', 'warning');
+          this.addLog('复制验证码失败: ' + clipboardError.message, 'warn');
+        }
+      } else {
+        // 检查是否是用户主动停止
+        if (this.isUserStoppingCode && response.error === '获取验证码已被中断') {
+          // 用户主动停止
+          console.log('停止获取验证码');
+        } else {
+          // 真正的错误，显示错误信息
+          this.showNotification('获取验证码失败: ' + response.error, 'error');
+          this.addLog('获取验证码失败: ' + response.error, 'error');
+        }
+      }
+    } catch (error) {
+      // 检查是否是用户主动停止
+      if (this.isUserStoppingCode && (error.message === '获取验证码已被中断' || error.message.includes('中断'))) {
+        // 用户主动停止
+        console.log('停止获取验证码');
+      } else {
+        // 真正的错误，显示错误信息
+        this.showNotification('获取验证码失败: ' + error.message, 'error');
+        this.addLog('获取验证码异常: ' + error.message, 'error');
+      }
+    } finally {
+      // 重置用户停止标志
+      this.isUserStoppingCode = false;
+
+      // 恢复按钮状态
+      document.getElementById('homeGetCodeBtn').style.display = 'inline-block';
+      document.getElementById('homeStopCodeBtn').style.display = 'none';
+    }
+  }
+
+  // 处理验证码获取进度
+  handleCodeProgress(progress) {
+    if (progress.message) {
+      this.addLog(progress.message, progress.error ? 'error' : progress.waiting ? 'warn' : 'info');
+    }
+  }
+
+  // 首页停止获取验证码
+  async stopGettingCodeForHome() {
+    try {
+      // 设置用户主动停止标志
+      this.isUserStoppingCode = true;
+
+      await chrome.runtime.sendMessage({ action: 'stopGettingCode' });
+
+      // 添加停止日志
+      this.showNotification('已停止获取验证码', 'info');
+    } catch (error) {
+      this.showNotification('停止失败: ' + error.message, 'error');
+    } finally {
+      // 恢复按钮状态
+      document.getElementById('homeGetCodeBtn').style.display = 'inline-block';
+      document.getElementById('homeStopCodeBtn').style.display = 'none';
+    }
+  }
+
+  // 加载设置
+  async loadSettings() {
+    try {
+      console.log('开始加载设置...');
+      const response = await chrome.runtime.sendMessage({ action: 'getSettings' });
+      console.log('获取设置响应:', response);
+
+      if (response.success) {
+        const settings = response.settings || {};
+        console.log('设置数据:', settings);
+
+        // 填充表单
+        const domainsInput = document.getElementById('domainsInput');
+        const targetEmailInput = document.getElementById('targetEmailInput');
+        const pinCodeInput = document.getElementById('pinCodeInput');
+
+        if (domainsInput) {
+          domainsInput.value = settings.domains || '';
+          console.log('设置域名输入框:', settings.domains);
+        }
+        if (targetEmailInput) {
+          targetEmailInput.value = settings.targetEmail || '';
+          console.log('设置目标邮箱输入框:', settings.targetEmail);
+        }
+        if (pinCodeInput) {
+          pinCodeInput.value = settings.pinCode || '';
+          console.log('设置PIN码输入框:', settings.pinCode);
+        }
+
+        // 状态显示已移除，不需要更新
+      } else {
+        console.error('获取设置失败:', response.error);
+      }
+    } catch (error) {
+      console.error('加载设置失败:', error);
+    }
+  }
+
+  // 保存设置
+  async saveSettings() {
+    try {
+      const settings = {
+        domains: document.getElementById('domainsInput').value.trim(),
+        targetEmail: document.getElementById('targetEmailInput').value.trim(),
+        pinCode: document.getElementById('pinCodeInput').value.trim(),
+        autoGenerateEmail: true // 默认自动生成邮箱
+      };
+
+      const response = await chrome.runtime.sendMessage({
+        action: 'saveSettings',
+        settings: settings
+      });
+
+      if (response.success) {
+        this.showNotification('设置保存成功', 'success');
+        // 状态显示已移除，不需要更新
+      } else {
+        this.showNotification('保存设置失败: ' + response.error, 'error');
+      }
+    } catch (error) {
+      this.showNotification('保存设置失败: ' + error.message, 'error');
+    }
+  }
+
+  // 重置设置
+  async resetSettings() {
+    if (confirm('确定要重置所有设置吗？此操作不可恢复。')) {
+      try {
+        const response = await chrome.runtime.sendMessage({ action: 'resetSettings' });
+        if (response.success) {
+          this.showNotification('设置已重置', 'success');
+          this.loadSettings();
+        } else {
+          this.showNotification('重置设置失败: ' + response.error, 'error');
+        }
+      } catch (error) {
+        this.showNotification('重置设置失败: ' + error.message, 'error');
+      }
+    }
+  }
+
+
+
+
+
+  toggleLogs() {
+    const logsContainer = document.getElementById('logsContainer');
+    const toggleBtn = document.getElementById('toggleLogsBtn');
+
+    if (logsContainer.classList.contains('collapsed')) {
+      logsContainer.classList.remove('collapsed');
+      toggleBtn.textContent = '收起';
+    } else {
+      logsContainer.classList.add('collapsed');
+      toggleBtn.textContent = '展开';
+    }
+  }
+
+  // 监听控制台日志
+  setupConsoleCapture() {
+    // 保存原始console方法
+    const originalLog = console.log;
+    const originalWarn = console.warn;
+    const originalError = console.error;
+
+    // 重写console方法
+    console.log = (...args) => {
+      originalLog.apply(console, args);
+      this.addLog(args.join(' '), 'info');
+    };
+
+    console.warn = (...args) => {
+      originalWarn.apply(console, args);
+      this.addLog(args.join(' '), 'warn');
+    };
+
+    console.error = (...args) => {
+      originalError.apply(console, args);
+      this.addLog(args.join(' '), 'error');
+    };
+  }
+
+  // 日志管理
+  addLog(message, type = 'info') {
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = {
+      timestamp: timestamp,
+      message: message,
+      type: type
+    };
+
+    // 添加到数组末尾，保持时间顺序（旧→新）
+    this.logs.push(logEntry);
+
+    // 限制日志数量，删除最旧的日志
+    if (this.logs.length > this.maxLogs) {
+      this.logs.shift();
+    }
+
+    this.renderLogs();
+  }
+
+  renderLogs() {
+    const logHtml = this.logs.length === 0
+      ? '<div class="log-entry info">暂无日志</div>'
+      : this.logs.map(log => `
+          <div class="log-entry ${log.type}">
+            <span class="log-timestamp">[${log.timestamp}]</span>
+            <span class="log-message">${log.message}</span>
+          </div>
+        `).join('');
+
+    // 更新首页日志
+    const logsContent = document.getElementById('logsContent');
+    if (logsContent) {
+      logsContent.innerHTML = logHtml;
+      // 滚动到底部显示最新日志
+      logsContent.scrollTop = logsContent.scrollHeight;
+    }
+
+    // 更新流程管理页面日志
+    const logsContent2 = document.getElementById('logsContent2');
+    if (logsContent2) {
+      logsContent2.innerHTML = logHtml;
+      // 滚动到底部显示最新日志
+      logsContent2.scrollTop = logsContent2.scrollHeight;
+    }
+  }
+
+  clearLogs() {
+    this.logs = [];
+    this.renderLogs();
+    this.addLog('日志已清空', 'info');
+  }
+
+  toggleLogs(containerId = 'logsContainer', btnId = 'toggleLogsBtn') {
+    const logsContainer = document.getElementById(containerId);
+    const toggleBtn = document.getElementById(btnId);
+
+    if (logsContainer && toggleBtn) {
+      if (logsContainer.classList.contains('collapsed')) {
+        logsContainer.classList.remove('collapsed');
+        toggleBtn.textContent = '收起';
+      } else {
+        logsContainer.classList.add('collapsed');
+        toggleBtn.textContent = '展开';
+      }
+    }
+  }
+
+  // 监听控制台日志
+  setupConsoleCapture() {
+    // 保存原始console方法
+    const originalLog = console.log;
+    const originalWarn = console.warn;
+    const originalError = console.error;
+
+    // 重写console方法
+    console.log = (...args) => {
+      originalLog.apply(console, args);
+      const message = args.join(' ');
+      // 过滤掉一些不重要的日志
+      if (!message.includes('SidebarFlowManager') && !message.includes('初始化完成')) {
+        this.addLog(message, 'info');
+      }
+    };
+
+    console.warn = (...args) => {
+      originalWarn.apply(console, args);
+      this.addLog(args.join(' '), 'warn');
+    };
+
+    console.error = (...args) => {
+      originalError.apply(console, args);
+      this.addLog(args.join(' '), 'error');
+    };
+  }
+
+  // 停止自动化流程
+  async stopAutomationFlow() {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'stopAutomationFlow'
+      });
+
+      if (response.success) {
+        this.addLog('🛑 用户手动停止流程', 'warn');
+
+        this.showNotification('流程已停止', 'info');
+      } else {
+        this.showNotification('停止流程失败: ' + response.error, 'error');
+      }
+    } catch (error) {
+      this.showNotification('停止流程失败: ' + error.message, 'error');
+    }
+  }
+
+
+
+  // 启动元素选择器
+  async startElementPicker() {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'startElementPicker'
+      });
+
+      if (response.success) {
+        this.updatePickerStatus('正在选择元素...点击页面元素或按ESC取消', true);
+        this.addLog('🎯 元素选择器已启动', 'info');
+        this.showNotification('请在页面上点击要选择的元素', 'info');
+      } else {
+        this.showNotification('启动元素选择器失败: ' + response.error, 'error');
+      }
+    } catch (error) {
+      this.showNotification('启动元素选择器失败: ' + error.message, 'error');
+    }
+  }
+
+  // 停止元素选择器
+  async stopElementPicker() {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'stopElementPicker'
+      });
+
+      if (response.success) {
+        this.updatePickerStatus('点击"选择元素"开始选择页面元素', false);
+        this.addLog('⏹️ 元素选择器已停止', 'info');
+      } else {
+        this.showNotification('停止元素选择器失败: ' + response.error, 'error');
+      }
+    } catch (error) {
+      this.showNotification('停止元素选择器失败: ' + error.message, 'error');
+    }
+  }
+
+  // 更新选择器状态
+  updatePickerStatus(status, isActive = false) {
+    const pickerStatus = document.getElementById('pickerStatus');
+    const startBtn = document.getElementById('startPickerBtn');
+    const stopBtn = document.getElementById('stopPickerBtn');
+
+    if (pickerStatus) {
+      pickerStatus.textContent = status;
+      pickerStatus.className = isActive ? 'picker-status active' : 'picker-status';
+    }
+
+    if (startBtn && stopBtn) {
+      startBtn.style.display = isActive ? 'none' : 'block';
+      stopBtn.style.display = isActive ? 'block' : 'none';
+    }
+  }
+
+  // 处理元素选择结果
+  handleElementPickerResult(data) {
+    console.log('🎯 handleElementPickerResult 被调用，选择器数量:', data.selectors?.length);
+
+    if (!data || !data.element) {
+      console.error('元素选择结果数据无效:', data);
+      return;
+    }
+
+    // 提取选择器数据，只保留唯一性选择器
+    let selectors = [];
+
+    if (data.selectors && Array.isArray(data.selectors)) {
+      // 严格过滤：只保留唯一性选择器
+      selectors = data.selectors.filter(item => {
+        console.log('🔍 检查选择器项:', item);
+
+        // 1. 字符串选择器：无法判断唯一性，跳过
+        if (typeof item === 'string') {
+          console.log('❌ 跳过字符串选择器（无唯一性信息）:', item);
+          return false;
+        }
+
+        // 2. 选择器对象：只保留明确标记为唯一的选择器
+        if (item && typeof item === 'object' && item.selector && typeof item.selector === 'string') {
+          // 只保留标记为唯一的选择器
+          if (item.unique === true) {
+            console.log('✅ 保留唯一选择器:', item);
+            return true;
+          } else {
+            console.log('❌ 跳过非唯一选择器:', item);
+            return false;
+          }
+        }
+
+        // 3. 跳过其他类型的对象
+        console.log('❌ 跳过非选择器对象:', item);
+        return false;
+      });
+    }
+
+    console.log('🎯 过滤后的选择器:', selectors);
+    console.log('🎯 选择器数量:', selectors.length);
+
+    if (selectors.length === 0) {
+      console.error('没有找到有效的选择器');
+      this.showMessage('没有找到有效的选择器，请重试', 'error');
+      return;
+    }
+
+    this.updatePickerStatus('元素已选择', false);
+    // 传递处理后的数据
+    this.displaySelectorResults({ ...data, selectors: selectors });
+    this.addLog(`✅ 已选择元素: ${data.element.tagName.toLowerCase()}`, 'success');
+  }
+
+  // 显示选择器结果（简化版，确保能正常显示）
+  displaySelectorResults(data) {
+    console.log('🎯 displaySelectorResults 被调用，数据:', data);
+    console.log('🎯 当前编辑步骤:', this.currentEditingStepItem);
+
+    // 首先清理所有旧的选择器结果
+    this.clearSelectorResults();
+
+    // 优先使用当前编辑步骤附近的容器
+    let resultsContainer = null;
+
+    if (this.currentEditingStepItem) {
+      console.log('🎯 使用当前编辑步骤的选择器结果容器');
+
+      // 查找当前步骤中的选择器结果容器
+      resultsContainer = this.currentEditingStepItem.querySelector('#selectorResults, .selector-results');
+
+      if (resultsContainer) {
+        console.log('🎯 找到现有的选择器结果容器');
+      } else {
+        console.log('⚠️ 当前步骤中没有找到选择器结果容器，使用全局容器');
+        resultsContainer = document.getElementById('selectorResults');
+      }
+    } else {
+      console.log('⚠️ 没有当前编辑步骤，使用全局容器');
+      resultsContainer = document.getElementById('selectorResults');
+    }
+
+    if (!resultsContainer) {
+      console.error('❌ 找不到结果容器');
+      return;
+    }
+
+    // 显示容器并设置样式
+    resultsContainer.style.display = 'block';
+    resultsContainer.style.cssText = `
+      display: block;
+      margin-top: 8px;
+      padding: 8px;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      max-height: 200px;
+      overflow-y: auto;
+    `;
+
+    // 不显示元素信息，直接显示选择器候选项
+    let html = '';
+
+    // 显示选择器选项（使用已过滤的数据）
+    html += '<div class="selector-list">';
+    data.selectors.forEach((selector, index) => {
+      console.log(`🎯 显示已过滤的选择器 ${index}:`, selector);
+
+      // 提取选择器值（数据已经过过滤，这里只需要简单提取）
+      let selectorValue;
+      if (typeof selector === 'string') {
+        selectorValue = selector;
+      } else if (selector && typeof selector.selector === 'string') {
+        selectorValue = selector.selector;
+      } else {
+        console.error(`❌ 过滤后仍有无效选择器 ${index}:`, selector);
+        return;
+      }
+
+      const selectorType = selector.type || 'css';
+      const selectorDesc = selector.description || `${selectorType}选择器`;
+      const uniqueIcon = selector.unique ? '✅' : '⚠️';
+      const uniqueText = selector.unique ? '唯一' : '非唯一';
+
+      // HTML转义选择器值，确保特殊字符正确处理
+      const escapedSelectorValue = selectorValue
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      html += `
+        <div class="selector-item" data-selector="${escapedSelectorValue}" data-index="${index}"
+             style="cursor: pointer; padding: 8px 12px; margin: 2px 0; border-bottom: 1px solid #f0f0f0; background: #fff; transition: background-color 0.2s; display: flex; justify-content: space-between; align-items: center;">
+          <div class="selector-content" style="flex: 1;">
+            <div class="selector-value" style="font-family: monospace; font-size: 13px; color: #333; margin-bottom: 2px;">${selectorValue}</div>
+            <div class="selector-meta" style="font-size: 11px; color: #888;">${selectorType.toUpperCase()} • ${selectorDesc}</div>
+          </div>
+          <div class="selector-status" style="font-size: 12px; margin-left: 8px;">${uniqueIcon}</div>
+        </div>
+      `;
+    });
+    html += '</div>';
+
+    resultsContainer.innerHTML = html;
+    resultsContainer.style.display = 'block';
+
+    // 绑定点击事件和悬停效果
+    resultsContainer.querySelectorAll('.selector-item').forEach(item => {
+      item.addEventListener('click', () => {
+        this.selectSelector(item);
+      });
+
+      // 添加悬停效果
+      item.addEventListener('mouseenter', () => {
+        item.style.backgroundColor = '#f0f8ff';
+        item.style.borderColor = '#007acc';
+        item.style.cursor = 'pointer';
+      });
+
+      item.addEventListener('mouseleave', () => {
+        if (!item.classList.contains('selected')) {
+          item.style.backgroundColor = '#fff';
+          item.style.borderColor = '#ddd';
+        }
+      });
+    });
+
+    console.log('🎯 选择器候选值已显示，等待用户选择');
+
+    // 默认选择第一个选项并填写到输入框
+    if (data.selectors.length > 0) {
+      const firstSelector = data.selectors[0];
+      const firstSelectorValue = typeof firstSelector === 'string' ? firstSelector : firstSelector.selector;
+      this.fillSelectorToInput(firstSelectorValue);
+      console.log('🎯 默认选择第一个选择器:', firstSelectorValue);
+    }
+
+    this.showMessage('选择器候选值已显示，点击可切换选择', 'info');
+  }
+
+  // 选择选择器
+  selectSelector(item) {
+    // 移除其他选中状态
+    document.querySelectorAll('.selector-item').forEach(el => {
+      el.classList.remove('selected');
+    });
+
+    // 添加选中状态
+    item.classList.add('selected');
+
+    // HTML解码选择器值
+    const rawSelector = item.dataset.selector;
+    const selector = rawSelector
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>');
+
+    console.log('🎯 原始选择器值:', rawSelector);
+    console.log('🎯 解码后选择器值:', selector);
+
+    // 填充到当前编辑步骤的输入框
+    let selectorInput = null;
+    if (this.currentEditingStepItem) {
+      selectorInput = this.currentEditingStepItem.querySelector('.step-selector');
+      console.log('🎯 使用当前编辑步骤的输入框，步骤:', this.currentEditingStepItem.dataset.stepId || 'unknown');
+    } else {
+      // 如果没有当前编辑步骤，尝试从选择器结果容器的父级查找
+      const resultsContainer = item.closest('.selector-results-container');
+      if (resultsContainer) {
+        const stepItem = resultsContainer.closest('.step-item');
+        if (stepItem) {
+          selectorInput = stepItem.querySelector('.step-selector');
+          console.log('🎯 从结果容器找到对应步骤的输入框');
+        }
+      }
+
+      // 最后的降级方案
+      if (!selectorInput) {
+        selectorInput = document.querySelector('.step-selector');
+        console.log('⚠️ 使用降级方案：第一个输入框');
+      }
+    }
+
+    if (selectorInput) {
+      selectorInput.value = selector;
+      selectorInput.dispatchEvent(new Event('input', { bubbles: true }));
+      console.log('✅ 选择器已填充到输入框:', selector);
+    } else {
+      console.error('❌ 找不到选择器输入框');
+    }
+
+    this.addLog(`✅ 已选择选择器: ${selector}`, 'success');
+
+    // 不清理选择器结果显示，保持候选项可见
+    // this.clearSelectorResults();
+  }
+
+  // 填写选择器到输入框
+  fillSelectorToInput(selector) {
+    let selectorInput = null;
+    if (this.currentEditingStepItem) {
+      selectorInput = this.currentEditingStepItem.querySelector('.step-selector');
+      console.log('🎯 使用当前编辑步骤的输入框，步骤:', this.currentEditingStepItem.dataset.stepId || 'unknown');
+    } else {
+      // 降级方案
+      selectorInput = document.querySelector('.step-selector');
+      console.log('⚠️ 使用降级方案：第一个输入框');
+    }
+
+    if (selectorInput) {
+      selectorInput.value = selector;
+      console.log('✅ 选择器已填充到输入框:', selector);
+
+      // 触发input事件，确保其他监听器能够响应
+      selectorInput.dispatchEvent(new Event('input', { bubbles: true }));
+    } else {
+      console.error('❌ 找不到选择器输入框');
+    }
+  }
+
+  // 清理选择器结果显示
+  clearSelectorResults() {
+    console.log('🧹 开始清理选择器结果');
+
+    // 清理动态创建的选择器结果容器
+    const dynamicContainers = document.querySelectorAll('.selector-results-container');
+    console.log('🧹 找到动态容器数量:', dynamicContainers.length);
+
+    dynamicContainers.forEach((container, index) => {
+      if (container.id !== 'selectorResults') { // 保留全局容器
+        console.log(`🧹 移除动态容器 ${index}:`, container.id || 'no-id');
+        container.remove();
+      }
+    });
+
+    // 清理全局容器内容
+    const globalContainer = document.getElementById('selectorResults');
+    if (globalContainer) {
+      console.log('🧹 清理全局容器内容');
+      globalContainer.style.display = 'none';
+      globalContainer.innerHTML = '';
+    }
+
+    console.log('🧹 清理完成');
+  }
+
+  // 复制到剪切板（带备用方法）
+  copyToClipboard(text) {
+    // 方法1：使用现代API
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(() => {
+        this.showNotification('选择器已复制到剪切板', 'success');
+      }).catch(() => {
+        this.fallbackCopyToClipboard(text);
+      });
+    } else {
+      // 方法2：备用方法
+      this.fallbackCopyToClipboard(text);
+    }
+  }
+
+  // 备用复制方法
+  fallbackCopyToClipboard(text) {
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+
+      if (successful) {
+        this.showNotification('选择器已复制到剪切板', 'success');
+      } else {
+        this.showNotification('选择器已填充到输入框', 'info');
+      }
+    } catch (err) {
+      this.showNotification('选择器已填充到输入框', 'info');
+    }
+  }
+
+  // 显示通知
+  showNotification(message, type = 'info') {
+    // 创建通知元素
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : type === 'warning' ? '#FF9800' : '#2196F3'};
+      color: white;
+      padding: 12px 20px;
+      border-radius: 4px;
+      z-index: 10000;
+      font-size: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    `;
+
+    document.body.appendChild(notification);
+
+    // 3秒后自动移除
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 3000);
+  }
+}
+
+// 创建全局实例
+let sidebarFlowManager;
+
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+  sidebarFlowManager = new SidebarFlowManager();
+});

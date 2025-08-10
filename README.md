@@ -101,18 +101,28 @@
 ```
 ├── manifest.json          # Chrome扩展配置 (Manifest V3)
 ├── background.js          # 后台服务脚本
-├── popup/                 # 侧边栏界面
+├── popup/                 # Popup界面 (保留兼容性)
 │   ├── popup.html         # 界面结构
-│   ├── popup.css          # 界面样式 (侧边栏优化)
+│   ├── popup.css          # 界面样式
 │   └── popup.js           # 界面逻辑
-├── options/               # 设置页面
-│   ├── options.html       # 设置界面 (简化配置)
-│   ├── options.css        # 设置样式
-│   └── options.js         # 设置逻辑
+├── sidepanel/             # 侧边栏界面 (主要界面)
+│   ├── flow-manager-sidebar.html  # 侧边栏结构
+│   ├── flow-manager-sidebar.css   # 侧边栏样式
+│   └── flow-manager-sidebar.js    # 侧边栏逻辑
+├── options/               # 流程管理页面
+│   ├── flow-manager.html  # 完整流程管理界面
+│   ├── flow-manager.css   # 管理界面样式
+│   └── flow-manager.js    # 管理界面逻辑
+├── content/               # 内容脚本
+│   ├── automation-content.js      # 自动化内容脚本
+│   └── element-selector.js        # 元素选择器
 ├── utils/                 # 核心工具
-│   ├── storage.js         # 存储管理 (简化配置)
+│   ├── storage.js         # 存储管理
 │   ├── email-generator.js # 邮箱生成
-│   └── api.js            # API接口 (固定API地址)
+│   ├── api.js            # API接口
+│   ├── automation-*.js   # 自动化相关工具
+│   └── ...               # 其他工具类
+├── templates/             # 流程模板
 └── icons/                # 图标资源
 ```
 

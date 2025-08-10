@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自动化流程管理 - 侧边栏</title>
+    <link rel="stylesheet" href="flow-manager-sidebar.css">
+</head>
+<body>
+    <div class="sidebar-container">
+
+
+        <!-- 主要内容区域 -->
+        <main class="main-content">
+            <!-- 首页 - 流程管理 -->
+            <div id="homePage" class="page active">
+                <!-- 邮箱和验证码快速操作 -->
+                <section class="quick-email-section">
+                    <div class="email-quick-card">
+                        <div class="card-header">
+                            <span class="card-icon">📧</span>
+                            <h3>临时邮箱</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="email-display">
+                                <input type="text" id="homeEmailInput" readonly placeholder="点击生成邮箱地址">
+                                <button id="homeGenerateEmailBtn" class="btn btn-primary">生成新邮箱</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="code-quick-card">
+                        <div class="card-header">
+                            <span class="card-icon">🔐</span>
+                            <h3>验证码</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="code-display">
+                                <input type="text" id="homeCodeInput" readonly placeholder="点击获取验证码">
+                                <button id="homeGetCodeBtn" class="btn btn-primary">获取验证码</button>
+                                <button id="homeStopCodeBtn" class="btn btn-danger" style="display: none;">停止获取</button>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </section>
+
+                <!-- 快速操作区域 -->
+                <section class="quick-actions-section">
+                    <h3>功能导航</h3>
+                    <div class="quick-actions-grid">
+                        <button class="quick-action-card" id="emailToolBtn">
+                            <div class="action-icon">📧</div>
+                            <div class="action-content">
+                                <div class="action-title">历史邮箱管理</div>
+                                <div class="action-desc">查看邮箱历史和详细管理</div>
+                            </div>
+                        </button>
+                        <button class="quick-action-card" id="flowManagerBtn">
+                            <div class="action-icon">🤖</div>
+                            <div class="action-content">
+                                <div class="action-title">自动化流程</div>
+                                <div class="action-desc">管理自动化注册流程</div>
+                            </div>
+                        </button>
+                        <button class="quick-action-card" id="settingsBtn">
+                            <div class="action-icon">⚙️</div>
+                            <div class="action-content">
+                                <div class="action-title">设置</div>
+                                <div class="action-desc">配置工具选项</div>
+                            </div>
+                        </button>
+                    </div>
+                </section>
+
+
+
+                <!-- 实时日志 -->
+                <section class="logs-section">
+                    <div class="logs-header">
+                        <h3>📋 实时日志</h3>
+                        <div class="logs-actions">
+                            <button id="clearLogsBtn" class="btn-small btn-secondary">清空</button>
+                            <button id="toggleLogsBtn" class="btn-small btn-secondary">收起</button>
+                        </div>
+                    </div>
+                    <div class="logs-container" id="logsContainer">
+                        <div class="logs-content" id="logsContent">
+                            <!-- 日志内容将在这里显示 -->
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- 历史邮箱管理页面 -->
+            <div id="emailToolPage" class="page">
+                <section class="email-tool-section">
+                    <div class="page-header">
+                        <button id="emailToolBackBtn" class="btn-icon back-btn" title="返回首页">←</button>
+                        <h2>📧 历史邮箱管理</h2>
+                    </div>
+
+                    <div class="email-history-manager">
+                        <div class="form-group">
+                            <div class="history-header">
+                                <label>邮箱历史</label>
+                                <button id="clearAllEmailHistoryBtn" class="btn btn-danger btn-small" style="display: none;">清除全部</button>
+                            </div>
+                            <div class="email-history" id="emailHistory">
+                                <!-- 邮箱历史将在这里显示 -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- 流程管理页面 -->
+            <div id="flowManagerPage" class="page">
+                <!-- 流程管理控制区域 -->
+                <section class="flow-controls-section">
+                    <div class="flow-controls-header">
+                        <div class="page-header">
+                            <button id="flowManagerBackBtn" class="btn-icon back-btn" title="返回首页">←</button>
+                            <h2>🤖 自动化流程管理</h2>
+                        </div>
+                        <div class="flow-actions">
+                            <button id="importFlowBtn2" class="btn btn-secondary">📥 导入流程</button>
+                            <button id="createFlowBtn2" class="btn btn-primary">➕ 创建新流程</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 流程列表 -->
+                <section class="flows-section">
+                    <div class="section-header">
+                        <h2>已配置的流程</h2>
+                        <div class="section-actions">
+                            <select id="filterDomain" class="filter-select">
+                                <option value="">所有域名</option>
+                                <option value="*">通用流程</option>
+                            </select>
+                            <input type="text" id="searchFlow" placeholder="搜索流程..." class="search-input">
+                        </div>
+                    </div>
+
+                    <div class="flows-grid" id="flowsGrid">
+                        <!-- 流程卡片将在这里动态生成 -->
+                    </div>
+
+                    <div class="empty-state" id="emptyState" style="display: none;">
+                        <div class="empty-icon">📝</div>
+                        <h3>还没有配置任何流程</h3>
+                        <p>点击"创建新流程"开始配置您的第一个自动化流程</p>
+                        <button class="btn btn-primary" id="createFlowBtnEmpty">
+                            创建新流程
+                        </button>
+                    </div>
+                </section>
+
+
+
+                <!-- 流程管理页面的实时日志 -->
+                <section class="logs-section">
+                    <div class="logs-header">
+                        <h3>📋 执行日志</h3>
+                        <div class="logs-actions">
+                            <button id="clearLogsBtn2" class="btn-small btn-secondary">清空</button>
+                            <button id="toggleLogsBtn2" class="btn-small btn-secondary">收起</button>
+                        </div>
+                    </div>
+                    <div class="logs-container" id="logsContainer2">
+                        <div class="logs-content" id="logsContent2">
+                            <!-- 日志内容将在这里显示 -->
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- 设置页面 -->
+            <div id="settingsPage" class="page">
+                <section class="settings-section">
+                    <div class="page-header">
+                        <button id="settingsBackBtn" class="btn-icon back-btn" title="返回首页">←</button>
+                        <h2>⚙️ 设置</h2>
+                    </div>
+
+                    <!-- 邮箱域名配置 -->
+                    <div class="settings-group">
+                        <h3>📧 邮箱域名配置</h3>
+                        <div class="form-group">
+                            <label for="domainsInput">
+                                可用域名:
+                                <span class="help-icon" title="点击查看Cloudflare配置指南">❓</span>
+                            </label>
+                            <input type="text" id="domainsInput" placeholder="domain1.com,domain2.com,domain3.com">
+                            <div class="form-help">多个域名用中文逗号（，）或英文逗号（,）分隔，生成邮箱时随机选择（不需要@符号）</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="targetEmailInput">目标邮箱:</label>
+                            <input type="email" id="targetEmailInput" placeholder="your-email@tempmail.plus">
+                            <div class="form-help">所有域名的邮件都会通过Cloudflare转发到这个邮箱地址</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="pinCodeInput">PIN码:</label>
+                            <input type="text" id="pinCodeInput" placeholder="您的tempmail.plus PIN码">
+                            <div class="form-help">用于访问tempmail.plus API的PIN码</div>
+                        </div>
+
+                        <!-- 数据管理按钮 -->
+                        <div class="form-group">
+                            <div class="button-group">
+                                <button id="saveSettingsBtn" class="btn btn-primary">💾 保存设置</button>
+                                <button id="resetSettingsBtn" class="btn btn-secondary">🔄 重置设置</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="button-group">
+                                <button id="exportDataBtn" class="btn btn-secondary">📤 导出所有数据</button>
+                                <button id="importDataBtn" class="btn btn-secondary">📥 导入数据</button>
+                                <button id="clearDataBtn" class="btn btn-danger">🗑️ 清空所有数据</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- 流程编辑模态框 -->
+        <div class="modal" id="flowEditorModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalTitle">创建新流程</h3>
+                    <button class="modal-close" id="closeModal">&times;</button>
+                </div>
+
+                <div class="modal-body">
+                    <form id="flowForm">
+                        <!-- 基本信息 -->
+                        <div class="form-section">
+                            <h4>基本信息</h4>
+                            <div class="form-group">
+                                <label for="flowName">流程名称 *</label>
+                                <input type="text" id="flowName" required placeholder="例如：Gmail注册流程">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="flowDomain">适用域名</label>
+                                <input type="text" id="flowDomain" placeholder="例如：accounts.google.com 或 * (通用)">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="flowDescription">流程描述</label>
+                                <textarea id="flowDescription" placeholder="描述这个流程的用途和特点"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- 步骤配置 -->
+                        <div class="form-section">
+                            <div class="section-header">
+                                <h4>执行步骤</h4>
+                                <button type="button" id="addStepBtn" class="btn btn-small">➕ 添加步骤</button>
+                            </div>
+
+                            <div class="steps-container" id="stepsContainer">
+                                <!-- 步骤将在这里动态生成 -->
+                            </div>
+                        </div>
+
+
+                    </form>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">取消</button>
+                    <button type="button" class="btn btn-secondary" id="testFlowBtn">🧪 测试流程</button>
+                    <button type="button" class="btn btn-primary" id="saveFlowBtn">💾 保存流程</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 步骤编辑模板 -->
+        <template id="stepTemplate">
+            <div class="step-item" data-step-index="">
+                <div class="step-header" onclick="this.closest('.step-item').querySelector('.step-toggle').click()">
+                    <div class="step-info">
+                        <button type="button" class="step-toggle" title="展开/收起">▼</button>
+                        <span class="step-number"></span>
+                        <span class="step-type-icon"></span>
+                        <input type="text" class="step-name" placeholder="步骤名称" onclick="event.stopPropagation()">
+                    </div>
+                    <div class="step-actions">
+                        <button type="button" class="btn-icon move-up" title="上移" onclick="event.stopPropagation()">↑</button>
+                        <button type="button" class="btn-icon move-down" title="下移" onclick="event.stopPropagation()">↓</button>
+                        <button type="button" class="btn-icon duplicate" title="复制" onclick="event.stopPropagation()">📋</button>
+                        <button type="button" class="btn-icon delete" title="删除" onclick="event.stopPropagation()">🗑️</button>
+                    </div>
+                </div>
+
+                <div class="step-content">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>步骤类型</label>
+                            <select class="step-type">
+                                <option value="fillInput">📝 填充输入框</option>
+                                <option value="clickButton">👆 点击按钮</option>
+                                <option value="waitForElement">⏳ 等待元素</option>
+                                <option value="humanVerification">🔐 人机验证</option>
+                                <!-- <option value="delay">⏱️ 延迟等待</option> -->
+                                <!-- <option value="scroll">📜 滚动页面</option> -->
+                                <!-- <option value="hover">🖱️ 鼠标悬停</option> -->
+                                <!-- <option value="selectOption">📋 选择选项</option> -->
+                                <!-- <option value="conditional">🔀 条件判断</option> -->
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>页面元素选择器</label>
+                            <div class="selector-input-group">
+                                <input type="text" class="step-selector" placeholder="CSS选择器或XPath">
+                                <button type="button" class="btn-icon selector-helper" title="选择器助手">🎯</button>
+                            </div>
+                            <!-- 选择器结果显示区域 -->
+                            <div id="selectorResults" class="selector-results" style="display: none;">
+                                <!-- 选择器结果将在这里显示 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>填充值/操作值</label>
+                            <input type="text" class="step-value" placeholder="输入具体文本或使用下方变量">
+                            <div class="variable-helpers">
+                                <div class="variable-buttons">
+                                    <button type="button" class="btn-variable" data-variable="{{email}}" title="插入邮箱变量">📧 邮箱</button>
+                                    <button type="button" class="btn-variable" data-variable="{{code}}" title="插入验证码变量">🔢 验证码</button>
+                                </div>
+                                <button type="button" class="btn-help" title="变量说明">❓</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>步骤描述</label>
+                            <input type="text" class="step-description" placeholder="描述这个步骤的作用">
+                        </div>
+                    </div>
+
+                    <!-- 高级选项 -->
+                    <details class="advanced-options">
+                        <summary>高级选项</summary>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>执行延迟(毫秒)</label>
+                                <input type="number" class="step-delay" min="0" max="10000" value="500">
+                            </div>
+
+                            <div class="form-group">
+                                <label>等待超时(毫秒)</label>
+                                <input type="number" class="step-timeout" min="1000" max="60000" value="5000">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" class="step-clear-first"> 填入前清空
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" class="step-scroll-into-view" checked> 滚动到元素
+                                </label>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </template>
+
+
+
+        <!-- Cloudflare配置指南模态框 -->
+        <div class="modal" id="cloudflareGuideModal">
+            <div class="modal-content" style="max-width: 600px; max-height: 80vh;">
+                <div class="modal-header">
+                    <h3>☁️ Cloudflare邮件转发配置指南</h3>
+                    <button class="modal-close" onclick="this.closest('.modal').style.display='none'">&times;</button>
+                </div>
+                <div class="modal-body" style="overflow-y: auto;">
+                    <div class="guide-content">
+                        <div class="guide-section">
+                            <h4>📋 配置步骤</h4>
+                            <ol>
+                                <li><strong>登录Cloudflare</strong>：访问 <a href="https://dash.cloudflare.com" target="_blank">dash.cloudflare.com</a></li>
+                                <li><strong>选择域名</strong>：点击要配置的域名</li>
+                                <li><strong>进入邮件设置</strong>：左侧菜单 → Email → Email Routing</li>
+                                <li><strong>启用邮件路由</strong>：点击"Enable Email Routing"</li>
+                                <li><strong>添加目标邮箱</strong>：在"Destination addresses"中添加您的真实邮箱</li>
+                                <li><strong>配置转发规则</strong>：设置 <code>*@yourdomain.com</code> → 您的邮箱</li>
+                                <li><strong>验证配置</strong>：发送测试邮件确认转发正常</li>
+                            </ol>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>⚙️ 转发规则示例</h4>
+                            <div class="code-block">
+                                <strong>通配符规则：</strong><br>
+                                <code>*@yourdomain.com</code> → <code>your-email@tempmail.plus</code>
+                            </div>
+                            <p>这样配置后，发送到任何 <code>xxx@yourdomain.com</code> 的邮件都会转发到您的目标邮箱。</p>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>💡 使用建议</h4>
+                            <ul>
+                                <li>建议配置多个域名以提高可用性</li>
+                                <li>定期检查邮件转发是否正常工作</li>
+                                <li>可以为不同用途设置不同的转发规则</li>
+                                <li>注意Cloudflare的邮件转发限制</li>
+                            </ul>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>🔗 相关链接</h4>
+                            <ul>
+                                <li><a href="https://developers.cloudflare.com/email-routing/" target="_blank">Cloudflare邮件路由官方文档</a></li>
+                                <li><a href="https://tempmail.plus" target="_blank">TempMail.plus官网</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 选择器助手提示 -->
+        <div class="selector-helper-tip" id="selectorHelperTip" style="display: none;">
+            <div class="tip-content">
+                <div class="tip-icon">🎯</div>
+                <div class="tip-text">
+                    <strong>选择器助手已激活</strong>
+                    <p>在页面上点击要自动化的元素</p>
+                </div>
+                <button class="tip-close" onclick="this.parentElement.parentElement.style.display='none'">×</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 变量说明模态框 -->
+    <div class="modal" id="variableHelpModal">
+        <div class="modal-content variable-help-content">
+            <div class="modal-header">
+                <h3>📋 可用变量说明</h3>
+                <button class="modal-close" onclick="this.closest('.modal').style.display='none'">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="variable-item">
+                    <div class="variable-name">📧 {{email}}</div>
+                    <div class="variable-desc">系统自动获取的临时邮箱地址，用于注册和接收邮件</div>
+                    <div class="variable-example">示例：temp123@example.com</div>
+                </div>
+                <div class="variable-item">
+                    <div class="variable-name">🔢 {{code}}</div>
+                    <div class="variable-desc">系统自动从邮箱中提取的验证码，用于验证步骤</div>
+                    <div class="variable-example">示例：123456</div>
+                </div>
+                <div class="variable-note">
+                    <strong>💡 使用提示：</strong>
+                    <ul>
+                        <li>变量会在流程执行时自动替换为实际值</li>
+                        <li>{{email}}变量在流程开始时获取</li>
+                        <li>{{code}}变量在需要时从邮箱自动提取</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="flow-manager-sidebar.js"></script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+{
+  "id": "generic-registration-template",
+  "name": "通用注册流程",
+  "domain": "*",
+  "description": "适用于大多数网站的通用注册流程模板，包含常见的注册步骤和人机验证处理",
+  "steps": [
+    {
+      "id": "step-1",
+      "type": "fillInput",
+      "name": "填入邮箱地址",
+      "description": "在邮箱输入框中填入生成的临时邮箱地址",
+      "selector": "input[type='email'], input[name*='email'], input[id*='email'], input[placeholder*='邮箱'], input[placeholder*='email']",
+      "value": "{{email}}",
+      "options": {
+        "delay": 500,
+        "clearFirst": true,
+        "waitForElement": 3000,
+        "scrollIntoView": true
+      }
+    },
+    {
+      "id": "step-2",
+      "type": "fillInput",
+      "name": "填入密码",
+      "description": "在密码输入框中填入随机生成的密码",
+      "selector": "input[type='password'], input[name*='password'], input[id*='password']",
+      "value": "TempPassword123!",
+      "options": {
+        "delay": 500,
+        "clearFirst": true,
+        "waitForElement": 3000,
+        "scrollIntoView": true
+      }
+    },
+    {
+      "id": "step-3",
+      "type": "fillInput",
+      "name": "确认密码",
+      "description": "在确认密码输入框中填入相同的密码",
+      "selector": "input[name*='confirm'], input[name*='repeat'], input[id*='confirm']",
+      "value": "TempPassword123!",
+      "options": {
+        "delay": 500,
+        "clearFirst": true,
+        "waitForElement": 3000,
+        "scrollIntoView": true
+      }
+    },
+    {
+      "id": "step-4",
+      "type": "humanVerification",
+      "name": "完成人机验证",
+      "description": "等待用户完成人机验证（验证码、滑块验证等）",
+      "options": {
+        "timeout": 120000,
+        "skipable": true,
+        "autoDetect": true,
+        "retryable": true
+      }
+    },
+    {
+      "id": "step-5",
+      "type": "clickButton",
+      "name": "点击注册按钮",
+      "description": "点击注册或提交按钮完成注册",
+      "selector": "button[type='submit'], input[type='submit'], button:contains('注册'), button:contains('提交'), button:contains('Register'), button:contains('Sign up')",
+      "options": {
+        "delay": 1000,
+        "waitForElement": 2000,
+        "scrollIntoView": true
+      }
+    },
+    {
+      "id": "step-6",
+      "type": "waitForElement",
+      "name": "等待邮箱验证提示",
+      "description": "等待页面显示邮箱验证提示信息",
+      "selector": ".verification-message, .email-sent, .check-email, [class*='verify'], [class*='confirm']",
+      "options": {
+        "timeout": 10000,
+        "checkInterval": 500
+      }
+    },
+    {
+      "id": "step-7",
+      "type": "delay",
+      "name": "等待邮件发送",
+      "description": "等待一段时间让邮件系统发送验证邮件",
+      "options": {
+        "duration": 5000
+      }
+    },
+    {
+      "id": "step-8",
+      "type": "fillInput",
+      "name": "填入验证码",
+      "description": "在验证码输入框中填入从邮件获取的验证码",
+      "selector": "input[name*='code'], input[name*='verify'], input[id*='code'], input[placeholder*='验证码'], input[placeholder*='code']",
+      "value": "{{verification_code}}",
+      "options": {
+        "delay": 500,
+        "clearFirst": true,
+        "waitForElement": 3000,
+        "scrollIntoView": true
+      }
+    },
+    {
+      "id": "step-9",
+      "type": "clickButton",
+      "name": "提交验证码",
+      "description": "点击提交验证码按钮",
+      "selector": "button:contains('验证'), button:contains('确认'), button:contains('Verify'), button[type='submit']",
+      "options": {
+        "delay": 1000,
+        "waitForElement": 2000,
+        "scrollIntoView": true
+      }
+    },
+    {
+      "id": "step-10",
+      "type": "waitForElement",
+      "name": "等待注册成功",
+      "description": "等待注册成功页面或成功提示",
+      "selector": ".success, .welcome, .dashboard, .profile, [class*='success'], [class*='complete']",
+      "options": {
+        "timeout": 15000,
+        "checkInterval": 1000
+      }
+    }
+  ],
+  "variables": {
+    "email": "{{email}}",
+    "code": "{{fetched_code}}"
+  },
+  "enabled": true,
+  "createdAt": 1704067200000,
+  "updatedAt": 1704067200000
+}

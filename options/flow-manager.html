@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自动化流程管理</title>
+    <link rel="stylesheet" href="flow-manager.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 头部导航 -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🤖 自动化流程管理</h1>
+                <div class="header-actions">
+                    <button id="importTemplateBtn" class="btn btn-secondary">📋 导入模板</button>
+                    <button id="importFlowBtn" class="btn btn-secondary">📥 导入流程</button>
+                    <button id="createFlowBtn" class="btn btn-primary">➕ 创建新流程</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主要内容区域 -->
+        <main class="main-content">
+            <!-- 流程列表 -->
+            <section class="flows-section">
+                <div class="section-header">
+                    <h2>已配置的流程</h2>
+                    <div class="section-actions">
+                        <select id="filterDomain" class="filter-select">
+                            <option value="">所有域名</option>
+                            <option value="*">通用流程</option>
+                        </select>
+                        <input type="text" id="searchFlow" placeholder="搜索流程..." class="search-input">
+                    </div>
+                </div>
+
+                <div class="flows-grid" id="flowsGrid">
+                    <!-- 流程卡片将在这里动态生成 -->
+                </div>
+
+                <div class="empty-state" id="emptyState" style="display: none;">
+                    <div class="empty-icon">📝</div>
+                    <h3>还没有配置任何流程</h3>
+                    <p>点击"创建新流程"开始配置您的第一个自动化流程</p>
+                    <button class="btn btn-primary" id="createFlowBtnEmpty">
+                        创建新流程
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- 流程编辑模态框 -->
+        <div class="modal" id="flowEditorModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalTitle">创建新流程</h3>
+                    <button class="modal-close" id="closeModal">&times;</button>
+                </div>
+                
+                <div class="modal-body">
+                    <form id="flowForm">
+                        <!-- 基本信息 -->
+                        <div class="form-section">
+                            <h4>基本信息</h4>
+                            <div class="form-group">
+                                <label for="flowName">流程名称 *</label>
+                                <input type="text" id="flowName" required placeholder="例如：Gmail注册流程">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="flowDomain">适用域名</label>
+                                <input type="text" id="flowDomain" placeholder="例如：accounts.google.com 或 * (通用)">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="flowDescription">流程描述</label>
+                                <textarea id="flowDescription" placeholder="描述这个流程的用途和特点"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- 步骤配置 -->
+                        <div class="form-section">
+                            <div class="section-header">
+                                <h4>执行步骤</h4>
+                                <button type="button" id="addStepBtn" class="btn btn-small">➕ 添加步骤</button>
+                            </div>
+                            
+                            <div class="steps-container" id="stepsContainer">
+                                <!-- 步骤将在这里动态生成 -->
+                            </div>
+                        </div>
+
+
+                    </form>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">取消</button>
+                    <button type="button" class="btn btn-secondary" id="testFlowBtn">🧪 测试流程</button>
+                    <button type="button" class="btn btn-primary" id="saveFlowBtn">💾 保存流程</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 步骤编辑模板 -->
+        <template id="stepTemplate">
+            <div class="step-item" data-step-index="">
+                <div class="step-header">
+                    <div class="step-info">
+                        <span class="step-number"></span>
+                        <span class="step-type-icon"></span>
+                        <input type="text" class="step-name" placeholder="步骤名称">
+                    </div>
+                    <div class="step-actions">
+                        <button type="button" class="btn-icon move-up" title="上移">↑</button>
+                        <button type="button" class="btn-icon move-down" title="下移">↓</button>
+                        <button type="button" class="btn-icon duplicate" title="复制">📋</button>
+                        <button type="button" class="btn-icon delete" title="删除">🗑️</button>
+                    </div>
+                </div>
+                
+                <div class="step-content">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>步骤类型</label>
+                            <select class="step-type">
+                                <option value="fillInput">📝 填充输入框</option>
+                                <option value="clickButton">👆 点击按钮</option>
+                                <option value="waitForElement">⏳ 等待元素</option>
+                                <option value="humanVerification">🔐 人机验证</option>
+                                <!-- <option value="delay">⏱️ 延迟等待</option> -->
+                                <!-- <option value="scroll">📜 滚动页面</option> -->
+                                <!-- <option value="hover">🖱️ 鼠标悬停</option> -->
+                                <!-- <option value="selectOption">📋 选择选项</option> -->
+                                <!-- <option value="conditional">🔀 条件判断</option> -->
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>页面元素选择器</label>
+                            <div class="selector-input-group">
+                                <input type="text" class="step-selector" placeholder="CSS选择器或XPath">
+                                <button type="button" class="btn-icon selector-helper" title="选择器助手">🎯</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>填充值/操作值</label>
+                            <input type="text" class="step-value" placeholder="例如：{{email}} 或具体文本">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>步骤描述</label>
+                            <input type="text" class="step-description" placeholder="描述这个步骤的作用">
+                        </div>
+                    </div>
+                    
+                    <!-- 高级选项 -->
+                    <details class="advanced-options">
+                        <summary>高级选项</summary>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>执行延迟(毫秒)</label>
+                                <input type="number" class="step-delay" min="0" max="10000" value="500">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>等待超时(毫秒)</label>
+                                <input type="number" class="step-timeout" min="1000" max="60000" value="5000">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" class="step-clear-first"> 填入前清空
+                                </label>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" class="step-scroll-into-view" checked> 滚动到元素
+                                </label>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </template>
+
+        <!-- 导入文件输入 -->
+        <input type="file" id="importFileInput" accept=".json" style="display: none;">
+    </div>
+
+    <script src="flow-manager.js"></script>
+</body>
+</html>

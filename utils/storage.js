@@ -17,6 +17,10 @@ class StorageManager {
         codeHistory: [],
         maxEmailHistory: 100,
         maxCodeHistory: 10
+      },
+      automationConfig: {
+        flows: [],
+        executionStates: {}
       }
     };
   }
@@ -145,6 +149,28 @@ class StorageManager {
     }
   }
 
+  // 删除单个邮箱历史记录
+  async deleteEmailHistoryItem(id) {
+    try {
+      const historyData = await this.getConfig('historyData');
+      const originalLength = historyData.emailHistory.length;
+
+      // 根据ID删除记录
+      historyData.emailHistory = historyData.emailHistory.filter(item => item.id !== id);
+
+      // 检查是否删除成功
+      if (historyData.emailHistory.length < originalLength) {
+        await this.setConfig('historyData', historyData);
+        return true;
+      } else {
+        return false; // 没有找到对应的记录
+      }
+    } catch (error) {
+      console.error('删除邮箱历史记录失败:', error);
+      return false;
+    }
+  }
+
   // 获取邮箱历史记录
   async getEmailHistory() {
     try {
@@ -239,6 +265,143 @@ class StorageManager {
     } catch (error) {
       console.error('导入配置失败:', error);
       return false;
+    }
+  }
+
+  // ========== 自动化配置相关方法 ==========
+
+  // 获取自动化流程列表
+  async getAutomationFlows() {
+    try {
+      const automationConfig = await this.getConfig('automationConfig');
+      return automationConfig.flows || [];
+    } catch (error) {
+      console.error('获取自动化流程失败:', error);
+      return [];
+    }
+  }
+
+  // 保存自动化流程
+  async saveAutomationFlow(flow) {
+    try {
+      const automationConfig = await this.getConfig('automationConfig');
+      const flows = automationConfig.flows || [];
+
+      // 检查是否已存在
+      const existingIndex = flows.findIndex(f => f.id === flow.id);
+
+      if (existingIndex !== -1) {
+        // 更新现有流程
+        flows[existingIndex] = {
+          ...flow,
+          updatedAt: Date.now()
+        };
+      } else {
+        // 添加新流程
+        flows.push({
+          ...flow,
+          id: flow.id || this.generateId(),
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        });
+      }
+
+      automationConfig.flows = flows;
+      await this.setConfig('automationConfig', automationConfig);
+      return true;
+    } catch (error) {
+      console.error('保存自动化流程失败:', error);
+      return false;
+    }
+  }
+
+  // 删除自动化流程
+  async deleteAutomationFlow(flowId) {
+    try {
+      const automationConfig = await this.getConfig('automationConfig');
+      const flows = automationConfig.flows || [];
+
+      automationConfig.flows = flows.filter(f => f.id !== flowId);
+      await this.setConfig('automationConfig', automationConfig);
+      return true;
+    } catch (error) {
+      console.error('删除自动化流程失败:', error);
+      return false;
+    }
+  }
+
+  // 获取自动化流程
+  async getAutomationFlow(flowId) {
+    try {
+      const flows = await this.getAutomationFlows();
+      return flows.find(f => f.id === flowId) || null;
+    } catch (error) {
+      console.error('获取自动化流程失败:', error);
+      return null;
+    }
+  }
+
+  // 保存执行状态
+  async saveExecutionState(executionId, state) {
+    try {
+      const automationConfig = await this.getConfig('automationConfig');
+      automationConfig.executionStates = automationConfig.executionStates || {};
+      automationConfig.executionStates[executionId] = {
+        ...state,
+        updatedAt: Date.now()
+      };
+      await this.setConfig('automationConfig', automationConfig);
+      return true;
+    } catch (error) {
+      console.error('保存执行状态失败:', error);
+      return false;
+    }
+  }
+
+  // 获取执行状态
+  async getExecutionState(executionId) {
+    try {
+      const automationConfig = await this.getConfig('automationConfig');
+      return automationConfig.executionStates?.[executionId] || null;
+    } catch (error) {
+      console.error('获取执行状态失败:', error);
+      return null;
+    }
+  }
+
+  // 清除执行状态
+  async clearExecutionState(executionId) {
+    try {
+      const automationConfig = await this.getConfig('automationConfig');
+      if (automationConfig.executionStates) {
+        delete automationConfig.executionStates[executionId];
+        await this.setConfig('automationConfig', automationConfig);
+      }
+      return true;
+    } catch (error) {
+      console.error('清除执行状态失败:', error);
+      return false;
+    }
+  }
+
+  // 获取匹配域名的自动化流程
+  async getFlowsForDomain(domain) {
+    try {
+      const flows = await this.getAutomationFlows();
+      return flows.filter(flow => {
+        if (!flow.enabled) return false;
+        if (flow.domain === '*') return true;
+        if (flow.domain === domain) return true;
+        // 支持通配符匹配
+        if (flow.domain.includes('*')) {
+          const regex = new RegExp(flow.domain.replace(/\*/g, '.*'));
+          return regex.test(domain);
+        }
+        return false;
+      });
+    } catch (error) {
+      console.error('获取域名匹配流程失败:', error);
+      return [];
     }
   }
 }
