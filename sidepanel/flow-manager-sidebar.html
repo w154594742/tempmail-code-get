@@ -55,8 +55,8 @@
                         <button class="quick-action-card" id="emailToolBtn">
                             <div class="action-icon">📧</div>
                             <div class="action-content">
-                                <div class="action-title">历史邮箱管理</div>
-                                <div class="action-desc">查看邮箱历史和详细管理</div>
+                                <div class="action-title">邮箱历史与邮件历史管理</div>
+                                <div class="action-desc">查看生成的临时邮箱历史和邮件内容历史</div>
                             </div>
                         </button>
                         <button class="quick-action-card" id="flowManagerBtn">
@@ -95,27 +95,66 @@
                 </section>
             </div>
 
-            <!-- 历史邮箱管理页面 -->
+            <!-- 邮箱历史与邮件历史管理页面 -->
             <div id="emailToolPage" class="page">
                 <section class="email-tool-section">
                     <div class="page-header">
                         <button id="emailToolBackBtn" class="btn-icon back-btn" title="返回首页">←</button>
-                        <h2>📧 历史邮箱管理</h2>
+                        <h2>📧 邮箱历史与邮件历史管理</h2>
                     </div>
 
-                    <div class="email-history-manager">
-                        <div class="form-group">
-                            <div class="history-header">
-                                <label>邮箱历史</label>
-                                <button id="clearAllEmailHistoryBtn" class="btn btn-danger btn-small"
-                                    style="display: none;">清除全部</button>
+                    <!-- 标签页导航 -->
+                    <div class="tab-navigation">
+                        <button class="tab-btn active" data-tab="email" id="emailTabBtn">邮箱历史</button>
+                        <button class="tab-btn" data-tab="mailContent" id="mailContentTabBtn">邮件内容历史</button>
+                    </div>
+
+                    <!-- 邮箱历史标签页 -->
+                    <div id="emailTab" class="tab-content">
+                        <div class="email-history-manager">
+                            <div class="form-group">
+                                <div class="history-header">
+                                    <label>邮箱历史 (最大1000条)</label>
+                                    <button id="clearAllEmailHistoryBtn" class="btn btn-danger btn-small"
+                                        style="display: none;">清除全部</button>
+                                </div>
+                                <div class="email-history" id="emailHistory">
+                                    <!-- 邮箱历史将在这里显示 -->
+                                </div>
                             </div>
-                            <div class="email-history" id="emailHistory">
-                                <!-- 邮箱历史将在这里显示 -->
+                        </div>
+                    </div>
+
+                    <!-- 邮件内容标签页 -->
+                    <div id="mailContentTab" class="tab-content" style="display: none;">
+                        <div class="mail-content-manager">
+                            <div class="form-group">
+                                <div class="history-header">
+                                    <label>邮件内容历史 (最大1000条)</label>
+                                    <button id="clearAllMailContentBtn" class="btn btn-danger btn-small" style="display: none;">清除全部</button>
+                                </div>
+                                <div class="mail-content-history" id="mailContentHistory">
+                                    <!-- 邮件内容历史将在这里显示 -->
+                                </div>
                             </div>
                         </div>
                     </div>
                 </section>
+            </div>
+
+            <!-- 邮件详情查看模态框 -->
+            <div id="mailDetailModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>邮件详情</h3>
+                        <span class="close" id="closeMailDetailModal">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mail-detail-content" id="mailDetailContent">
+                            <!-- 邮件详情内容 -->
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- 流程管理页面 -->

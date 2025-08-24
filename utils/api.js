@@ -324,7 +324,7 @@ class ApiManager {
   }
 
   // 获取最新邮件中的验证码
-  async getLatestMailCode(openLinksOnFailure = false) {
+  async getLatestMailCode(openLinksOnFailure = false, sourceEmail = null) {
     try {
       // 从正确的键名读取配置
       const result = await chrome.storage.local.get(['emailConfig', 'tempMailConfig']);
@@ -363,12 +363,51 @@ class ApiManager {
       console.log('邮件文本内容:', mailText);
       console.log('邮件HTML内容:', mailHtml);
 
+      // 记录邮件内容到历史（无论是否提取到验证码）
+      if (this.storageManager) {
+        try {
+          // 使用传入的 sourceEmail，如果为空则记录为未知来源
+          const recordEmail = sourceEmail || "未知来源";
+          await this.storageManager.addMailContentToHistory(
+            recordEmail,
+            {
+              subject: mailSubject,
+              text: mailText,
+              html: mailHtml,
+              mailId: firstId
+            },
+            null // 验证码稍后在成功提取后更新
+          );
+          console.log('邮件内容已记录到历史');
+        } catch (error) {
+          console.warn('记录邮件内容失败:', error);
+        }
+      }
+
       // 提取验证码（只从text字段提取）
       const code = this.extractVerificationCode(mailText);
 
-      // 如果获取到验证码，尝试删除邮件
+      // 如果获取到验证码，更新邮件记录中的验证码字段并删除邮件
       if (code) {
+        // 更新最新记录的验证码
+        if (this.storageManager) {
+          try {
+            const mailHistory = await this.storageManager.getMailContentHistory();
+            if (mailHistory.length > 0) {
+              // 更新最新记录的验证码
+              mailHistory[0].verificationCode = code;
+              const historyData = await this.storageManager.getConfig('historyData');
+              historyData.mailContentHistory = mailHistory;
+              await this.storageManager.setConfig('historyData', historyData);
+              console.log('已更新邮件记录的验证码:', code);
+            }
+          } catch (error) {
+            console.warn('更新邮件记录验证码失败:', error);
+          }
+        }
+
         try {
+          // 删除邮件
           await this.deleteMail(firstId, email, epin);
           console.log('邮件删除成功');
         } catch (deleteError) {
@@ -393,8 +432,8 @@ class ApiManager {
           // 在新标签页中打开链接
           await this.openLinksInNewTabs(links);
 
-          // 打开链接后删除邮件
           try {
+             // 删除邮件
             await this.deleteMail(firstId, email, epin);
             console.log('已打开链接并删除邮件');
           } catch (deleteError) {
@@ -431,7 +470,7 @@ class ApiManager {
   }
 
   // 获取验证码（带重试机制）
-  async getVerificationCode(maxRetries = 5, retryInterval = 3000, onProgress = null, abortSignal = null, openLinksOnFailure = false) {
+  async getVerificationCode(maxRetries = 5, retryInterval = 3000, onProgress = null, abortSignal = null, openLinksOnFailure = false, sourceEmail = null) {
     console.log('getVerificationCode调用参数:', { maxRetries, retryInterval, openLinksOnFailure });
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -452,7 +491,7 @@ class ApiManager {
         // 每次尝试都启用链接打开功能（如果参数为true）
         console.log(`第${attempt + 1}次尝试, openLinksOnFailure: ${openLinksOnFailure}`);
 
-        const code = await this.getLatestMailCode(openLinksOnFailure);
+        const code = await this.getLatestMailCode(openLinksOnFailure, sourceEmail);
 
         if (code && typeof code === 'object' && code.type === 'LINKS_OPENED') {
           // 链接已打开，停止重试
