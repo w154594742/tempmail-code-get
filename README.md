@@ -163,15 +163,11 @@
 ```
 ├── manifest.json          # Chrome扩展配置 (Manifest V3)
 ├── background.js          # 后台服务脚本
-├── popup/                 # Popup界面 (保留兼容性)
-│   ├── popup.html         # 界面结构
-│   ├── popup.css          # 界面样式
-│   └── popup.js           # 界面逻辑
 ├── sidepanel/             # 侧边栏界面 (主要界面)
 │   ├── flow-manager-sidebar.html  # 侧边栏结构
 │   ├── flow-manager-sidebar.css   # 侧边栏样式
 │   └── flow-manager-sidebar.js    # 侧边栏逻辑
-├── options/               # 流程管理页面
+├── options/               # 流程管理页面 (备用界面)
 │   ├── flow-manager.html  # 完整流程管理界面
 │   ├── flow-manager.css   # 管理界面样式
 │   └── flow-manager.js    # 管理界面逻辑
@@ -287,7 +283,7 @@
 ### 自定义开发
 1. 修改`utils/email-generator.js`中的姓名列表
 2. 调整`utils/storage.js`中的默认配置
-3. 自定义`popup/popup.css`中的界面样式
+3. 自定义`sidepanel/flow-manager-sidebar.css`中的界面样式
 
 ## 📝 更新日志
 

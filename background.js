@@ -87,6 +87,18 @@ class BackgroundService {
         case 'deleteHistoryItem':
           await this.handleDeleteHistoryItem(message, sendResponse);
           break;
+
+        case 'getMailContentHistory':
+          await this.handleGetMailContentHistory(message, sendResponse);
+          break;
+
+        case 'deleteMailContentHistoryItem':
+          await this.handleDeleteMailContentHistoryItem(message, sendResponse);
+          break;
+
+        case 'clearMailContentHistory':
+          await this.handleClearMailContentHistory(message, sendResponse);
+          break;
         
         case 'getLastData':
           await this.handleGetLastData(message, sendResponse);
@@ -322,7 +334,7 @@ class BackgroundService {
       this.isGettingCode = true;
       this.codeRequestController = new AbortController();
 
-      const { maxRetries = 5, retryInterval = 3000, openLinksOnFailure = false } = message;
+      const { maxRetries = 5, retryInterval = 3000, openLinksOnFailure = false, sourceEmail = null } = message;
 
       // 获取验证码，恢复进度回调用于首页显示
       const code = await apiManager.getVerificationCode(
@@ -341,12 +353,13 @@ class BackgroundService {
           }
         },
         this.codeRequestController.signal,
-        openLinksOnFailure
+        openLinksOnFailure,
+        sourceEmail
       );
 
       this.isGettingCode = false;
 
-      // 发送成功结果到popup
+      // 发送成功结果到前端
       try {
         chrome.runtime.sendMessage({
           type: 'codeResult',
@@ -369,7 +382,7 @@ class BackgroundService {
       this.isGettingCode = false;
       console.error('获取验证码失败:', error);
 
-      // 发送失败结果到popup
+      // 发送失败结果到前端
       try {
         chrome.runtime.sendMessage({
           type: 'codeResult',
@@ -399,7 +412,7 @@ class BackgroundService {
       this.isGettingCode = true;
       this.codeRequestController = new AbortController();
 
-      const { maxRetries = 5, retryInterval = 3000 } = message;
+      const { maxRetries = 5, retryInterval = 3000, sourceEmail = null } = message;
 
       // 包装进度回调，添加中断检查
       const wrappedProgressCallback = progressCallback ? (progress) => {
@@ -417,7 +430,8 @@ class BackgroundService {
         retryInterval,
         wrappedProgressCallback,
         this.codeRequestController.signal,
-        false // 自动化流程不启用链接打开功能
+        false, // 自动化流程不启用链接打开功能
+        sourceEmail
       );
 
       this.isGettingCode = false;
@@ -519,6 +533,51 @@ class BackgroundService {
       });
     } catch (error) {
       console.error('删除历史记录项失败:', error);
+      sendResponse({ success: false, error: error.message });
+    }
+  }
+
+  // 获取邮件内容历史记录
+  async handleGetMailContentHistory(message, sendResponse) {
+    try {
+      const history = await storageManager.getMailContentHistory();
+      sendResponse({
+        success: true,
+        history: history
+      });
+    } catch (error) {
+      console.error('获取邮件内容历史失败:', error);
+      sendResponse({ success: false, error: error.message });
+    }
+  }
+
+  // 删除邮件内容历史记录项
+  async handleDeleteMailContentHistoryItem(message, sendResponse) {
+    try {
+      const { id } = message;
+      const result = await storageManager.deleteMailContentHistoryItem(id);
+
+      sendResponse({
+        success: result,
+        message: result ? '邮件记录已删除' : '删除邮件记录失败'
+      });
+    } catch (error) {
+      console.error('删除邮件记录失败:', error);
+      sendResponse({ success: false, error: error.message });
+    }
+  }
+
+  // 清除邮件内容历史记录
+  async handleClearMailContentHistory(message, sendResponse) {
+    try {
+      const result = await storageManager.clearHistory('mailContent');
+
+      sendResponse({
+        success: result,
+        message: result ? '邮件内容历史已清除' : '清除邮件内容历史失败'
+      });
+    } catch (error) {
+      console.error('清除邮件内容历史失败:', error);
       sendResponse({ success: false, error: error.message });
     }
   }
@@ -637,14 +696,7 @@ class BackgroundService {
     }
   }
 
-  // 发送消息到popup（简化版本）
-  sendMessageToPopup(message) {
-    try {
-      chrome.runtime.sendMessage(message);
-    } catch (error) {
-      // 忽略所有错误
-    }
-  }
+
 
   // 处理插件安装
   async handleInstalled(details) {

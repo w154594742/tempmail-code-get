@@ -15,8 +15,10 @@ class StorageManager {
         lastVerificationCode: null,
         emailHistory: [],
         codeHistory: [],
+        mailContentHistory: [],
         maxEmailHistory: 100,
-        maxCodeHistory: 10
+        maxCodeHistory: 10,
+        maxMailContentHistory: 1000
       },
       automationConfig: {
         flows: [],
@@ -193,6 +195,82 @@ class StorageManager {
     }
   }
 
+  // 添加邮件内容到历史记录
+  async addMailContentToHistory(sourceEmail, mailContent, verificationCode = null) {
+    try {
+      const historyData = await this.getConfig('historyData');
+      const mailItem = {
+        id: this.generateId(),
+        sourceEmail: sourceEmail,
+        mailContent: {
+          subject: mailContent.subject || "",
+          text: mailContent.text || "",
+          html: mailContent.html || "",
+          mailId: mailContent.mailId || ""
+        },
+        timestamp: Date.now(),
+        verificationCode: verificationCode
+      };
+
+      // 确保 mailContentHistory 数组存在
+      if (!historyData.mailContentHistory) {
+        historyData.mailContentHistory = [];
+      }
+
+      // 添加到开头
+      historyData.mailContentHistory.unshift(mailItem);
+
+      // 确保 maxMailContentHistory 存在
+      if (!historyData.maxMailContentHistory) {
+        historyData.maxMailContentHistory = 1000;
+      }
+
+      // 保持最大数量限制
+      if (historyData.mailContentHistory.length > historyData.maxMailContentHistory) {
+        historyData.mailContentHistory = historyData.mailContentHistory.slice(0, historyData.maxMailContentHistory);
+      }
+
+      await this.setConfig('historyData', historyData);
+      return true;
+    } catch (error) {
+      console.error('添加邮件内容历史失败:', error);
+      return false;
+    }
+  }
+
+  // 获取邮件内容历史记录
+  async getMailContentHistory() {
+    try {
+      const historyData = await this.getConfig('historyData');
+      return historyData.mailContentHistory || [];
+    } catch (error) {
+      console.error('获取邮件内容历史失败:', error);
+      return [];
+    }
+  }
+
+  // 删除单个邮件内容历史记录
+  async deleteMailContentHistoryItem(id) {
+    try {
+      const historyData = await this.getConfig('historyData');
+      const originalLength = historyData.mailContentHistory.length;
+
+      // 根据ID删除记录
+      historyData.mailContentHistory = historyData.mailContentHistory.filter(item => item.id !== id);
+
+      // 检查是否删除成功
+      if (historyData.mailContentHistory.length < originalLength) {
+        await this.setConfig('historyData', historyData);
+        return true;
+      } else {
+        return false; // 没有找到对应的记录
+      }
+    } catch (error) {
+      console.error('删除邮件内容历史记录失败:', error);
+      return false;
+    }
+  }
+
   // 清除历史记录
   async clearHistory(type) {
     try {
@@ -202,9 +280,12 @@ class StorageManager {
         historyData.emailHistory = [];
       } else if (type === 'code') {
         historyData.codeHistory = [];
+      } else if (type === 'mailContent') {
+        historyData.mailContentHistory = [];
       } else if (type === 'all') {
         historyData.emailHistory = [];
         historyData.codeHistory = [];
+        historyData.mailContentHistory = [];
         historyData.lastEmail = null;
         historyData.lastVerificationCode = null;
       }

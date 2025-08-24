@@ -1489,6 +1489,25 @@ class SidebarFlowManager {
       this.showPage('home');
     });
 
+    // 邮件内容管理标签页切换
+    document.getElementById('emailTabBtn')?.addEventListener('click', () => {
+      this.switchTab('email');
+    });
+
+    document.getElementById('mailContentTabBtn')?.addEventListener('click', () => {
+      this.switchTab('mailContent');
+    });
+
+    // 清除邮件内容历史
+    document.getElementById('clearAllMailContentBtn')?.addEventListener('click', () => {
+      this.clearAllMailContentHistory();
+    });
+
+    // 关闭邮件详情模态框
+    document.getElementById('closeMailDetailModal')?.addEventListener('click', () => {
+      this.closeMailDetailModal();
+    });
+
     // 首页邮箱和验证码功能
     document.getElementById('homeGenerateEmailBtn')?.addEventListener('click', () => {
       this.generateEmailForHome();
@@ -1596,6 +1615,8 @@ class SidebarFlowManager {
       this.loadSettings();
     } else if (pageId === 'emailTool') {
       this.loadEmailHistory();
+      // 默认显示邮箱历史标签页
+      this.switchTab('email');
     }
   }
 
@@ -1679,8 +1700,14 @@ class SidebarFlowManager {
     container.innerHTML = history.slice(0, 20).map(item => `
       <div class="email-history-item" data-id="${item.id}">
         <div class="email-info">
-          <span class="email-address" title="${item.email}">${item.email}</span>
-          <span class="email-time">${new Date(item.timestamp).toLocaleString()}</span>
+          <div class="email-meta-item">
+            <span class="email-meta-label">📧 邮箱:</span>
+            <span class="email-meta-value email-address" title="${item.email}">${item.email}</span>
+          </div>
+          <div class="email-meta-item">
+            <span class="email-meta-label">🕒 创建时间:</span>
+            <span class="email-meta-value email-time">${new Date(item.timestamp).toLocaleString()}</span>
+          </div>
         </div>
         <div class="email-actions">
           <button class="btn-icon copy-email-btn" title="复制邮箱" data-email="${item.email}">📋</button>
@@ -1922,6 +1949,256 @@ class SidebarFlowManager {
     }
   }
 
+  // 标签页切换
+  switchTab(tabName) {
+    // 切换标签按钮状态
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`${tabName}TabBtn`).classList.add('active');
+
+    // 切换内容显示
+    document.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');
+    document.getElementById(`${tabName}Tab`).style.display = 'block';
+
+    // 加载对应数据
+    if (tabName === 'email') {
+      this.loadEmailHistory();
+    } else if (tabName === 'mailContent') {
+      this.loadMailContentHistory();
+    }
+  }
+
+  // 加载邮件内容历史
+  async loadMailContentHistory() {
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'getMailContentHistory' });
+      if (response.success) {
+        this.renderMailContentHistory(response.history);
+      }
+    } catch (error) {
+      console.error('加载邮件内容历史失败:', error);
+    }
+  }
+
+  // 渲染邮件内容历史
+  renderMailContentHistory(history) {
+    const container = document.getElementById('mailContentHistory');
+    const clearAllBtn = document.getElementById('clearAllMailContentBtn');
+
+    if (!container) return;
+
+    if (!history || history.length === 0) {
+      container.innerHTML = `
+        <div class="empty-message">
+          <div class="empty-message-text">暂无邮件内容记录</div>
+          <div class="empty-message-desc">获取验证码时的邮件内容将在这里显示</div>
+        </div>
+      `;
+      clearAllBtn.style.display = 'none';
+      return;
+    }
+
+    clearAllBtn.style.display = 'inline-block';
+
+    container.innerHTML = history.slice(0, 50).map(item => `
+      <div class="mail-content-item" data-id="${item.id}">
+        <div class="mail-info">
+          <div class="mail-subject" title="${item.mailContent.subject}">
+            📋 主题: ${item.mailContent.subject || '(无主题)'}
+          </div>
+          <div class="mail-meta">
+            <div class="mail-meta-item">
+              <span class="mail-meta-label">📧 源邮箱:</span>
+              <span class="mail-meta-value">${item.sourceEmail}</span>
+            </div>
+            <div class="mail-meta-item">
+              <span class="mail-meta-label">🕒 时间:</span>
+              <span class="mail-meta-value">${new Date(item.timestamp).toLocaleString()}</span>
+            </div>
+            ${item.verificationCode ? `
+              <div class="mail-meta-item">
+                <span class="mail-meta-label">🔢 验证码:</span>
+                <span class="mail-meta-value mail-code">${item.verificationCode}</span>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+        <div class="mail-actions">
+          <button class="btn-icon view-mail-btn" title="查看详情" data-id="${item.id}">👁️</button>
+          <button class="btn-icon delete-mail-btn" title="删除记录" data-id="${item.id}">🗑️</button>
+        </div>
+      </div>
+    `).join('');
+
+    // 绑定事件
+    this.bindMailContentEvents();
+  }
+
+  // 绑定邮件内容事件
+  bindMailContentEvents() {
+    // 查看邮件详情
+    document.querySelectorAll('.view-mail-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.target.getAttribute('data-id');
+        this.viewMailDetail(id);
+      });
+    });
+
+    // 删除邮件记录
+    document.querySelectorAll('.delete-mail-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.target.getAttribute('data-id');
+        this.deleteMailContentItem(id);
+      });
+    });
+  }
+
+  // 查看邮件详情
+  async viewMailDetail(id) {
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'getMailContentHistory' });
+      if (response.success) {
+        const mailItem = response.history.find(item => item.id === id);
+        if (mailItem) {
+          this.showMailDetailModal(mailItem);
+        }
+      }
+    } catch (error) {
+      console.error('获取邮件详情失败:', error);
+    }
+  }
+
+  // 显示邮件详情模态框
+  showMailDetailModal(mailItem) {
+    const modal = document.getElementById('mailDetailModal');
+    const content = document.getElementById('mailDetailContent');
+
+    content.innerHTML = `
+      <div class="mail-detail-header">
+        <h4>📋 邮件主题: ${mailItem.mailContent.subject || '(无主题)'}</h4>
+        <p><strong>📧 源邮箱:</strong> ${mailItem.sourceEmail}</p>
+        <p><strong>🕒 时间:</strong> ${new Date(mailItem.timestamp).toLocaleString()}</p>
+        ${mailItem.verificationCode ? `<p><strong>🔢 验证码:</strong> <span class="modal-verification-code">${mailItem.verificationCode}</span></p>` : ''}
+      </div>
+      <div class="mail-detail-body">
+        ${mailItem.mailContent.html ? `
+          <div class="mail-html-section">
+            <div class="mail-html-header">
+              <h5>📄 邮件内容:</h5>
+              <div class="view-toggle-buttons">
+                <button class="btn btn-small toggle-btn active" data-view="rendered">渲染视图</button>
+                <button class="btn btn-small toggle-btn" data-view="source">源代码</button>
+              </div>
+            </div>
+            <div class="mail-html-content">
+              <!-- 渲染视图 -->
+              <div class="html-rendered-view" style="display: block;">
+                <iframe class="mail-html-frame" srcdoc="${mailItem.mailContent.html.replace(/"/g, '&quot;')}"
+                        sandbox="allow-same-origin" style="width: 100%; min-height: 400px; border: 1px solid #ddd; border-radius: 4px;">
+                </iframe>
+              </div>
+              <!-- 源代码视图 -->
+              <div class="html-source-view" style="display: none;">
+                <textarea readonly rows="15" style="width: 100%; font-family: 'Courier New', monospace; font-size: 12px;">${mailItem.mailContent.html}</textarea>
+              </div>
+            </div>
+          </div>
+        ` : `
+          <div class="mail-text-section">
+            <h5>📄 邮件内容:</h5>
+            <div class="mail-text-content">
+              <pre>${mailItem.mailContent.text || '(无邮件内容)'}</pre>
+            </div>
+          </div>
+        `}
+      </div>
+    `;
+
+    modal.style.display = 'block';
+
+    // 绑定切换按钮事件
+    this.bindViewToggleEvents();
+  }
+
+  // 绑定视图切换事件
+  bindViewToggleEvents() {
+    document.querySelectorAll('.toggle-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const viewType = e.target.getAttribute('data-view');
+        const section = e.target.closest('.mail-html-section');
+
+        if (!section) return;
+
+        // 更新按钮状态
+        section.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+
+        // 切换视图
+        const renderedView = section.querySelector('.html-rendered-view');
+        const sourceView = section.querySelector('.html-source-view');
+
+        if (viewType === 'rendered') {
+          renderedView.style.display = 'block';
+          sourceView.style.display = 'none';
+        } else {
+          renderedView.style.display = 'none';
+          sourceView.style.display = 'block';
+        }
+      });
+    });
+  }
+
+  // 关闭邮件详情模态框
+  closeMailDetailModal() {
+    document.getElementById('mailDetailModal').style.display = 'none';
+  }
+
+  // 删除邮件内容记录
+  async deleteMailContentItem(id) {
+    try {
+      if (!confirm('确定要删除这条邮件记录吗？')) {
+        return;
+      }
+
+      const response = await chrome.runtime.sendMessage({
+        action: 'deleteMailContentHistoryItem',
+        id: id
+      });
+
+      if (response.success) {
+        this.showNotification('邮件记录已删除', 'success');
+        await this.loadMailContentHistory();
+      } else {
+        this.showNotification('删除失败: ' + response.message, 'error');
+      }
+    } catch (error) {
+      console.error('删除邮件记录失败:', error);
+      this.showNotification('删除失败', 'error');
+    }
+  }
+
+  // 清除全部邮件内容历史
+  async clearAllMailContentHistory() {
+    try {
+      if (!confirm('确定要清除所有邮件内容记录吗？此操作不可撤销。')) {
+        return;
+      }
+
+      const response = await chrome.runtime.sendMessage({
+        action: 'clearMailContentHistory'
+      });
+
+      if (response.success) {
+        this.showNotification('所有邮件内容记录已清除', 'success');
+        await this.loadMailContentHistory();
+      } else {
+        this.showNotification('清除失败: ' + response.message, 'error');
+      }
+    } catch (error) {
+      console.error('清除邮件内容记录失败:', error);
+      this.showNotification('清除失败', 'error');
+    }
+  }
+
   // 首页生成邮箱
   async generateEmailForHome() {
     try {
@@ -1957,12 +2234,16 @@ class SidebarFlowManager {
       document.getElementById('homeGetCodeBtn').style.display = 'none';
       document.getElementById('homeStopCodeBtn').style.display = 'inline-block';
 
+      // 获取当前显示的邮箱作为源邮箱
+      const sourceEmail = document.getElementById('homeEmailInput').value;
+
       this.addLog('开始获取验证码（使用设置页面配置）...', 'info');
       const response = await chrome.runtime.sendMessage({
         action: 'getVerificationCode',
         maxRetries: 10,
         retryInterval: 3000,
-        openLinksOnFailure: true
+        openLinksOnFailure: true,
+        sourceEmail: sourceEmail
       });
 
       if (response.success) {

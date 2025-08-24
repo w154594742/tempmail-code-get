@@ -15,11 +15,24 @@ class AutomationRunner {
     this.startTime = null;
     this.errors = [];
     this.stepResults = [];
+    this.storageManager = null; // 存储管理器实例
   }
 
   // 生成执行ID
   generateExecutionId() {
     return `exec_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+  }
+
+  // 初始化存储管理器
+  async initStorageManager() {
+    if (!this.storageManager) {
+      // 使用全局 storageManager 实例，而不是创建新实例
+      if (typeof storageManager !== 'undefined') {
+        this.storageManager = storageManager;
+      } else {
+        throw new Error('StorageManager not available');
+      }
+    }
   }
 
   // 开始执行流程
@@ -274,10 +287,24 @@ class AutomationRunner {
         }
       };
 
+      // 确保存储管理器已初始化
+      await this.initStorageManager();
+
+      // 获取最新生成的邮箱作为源邮箱
+      let sourceEmail = null;
+      try {
+        const emailHistory = await this.storageManager.getEmailHistory();
+        sourceEmail = emailHistory.length > 0 ? emailHistory[0].email : null;
+        console.log('自动化流程获取到的源邮箱:', sourceEmail);
+      } catch (error) {
+        console.warn('获取邮箱历史失败:', error);
+      }
+
       // 直接调用background的验证码获取方法，传入进度回调
       await this.backgroundInstance.handleGetVerificationCodeWithProgress({
         maxRetries: 10,
-        retryInterval: 3000
+        retryInterval: 3000,
+        sourceEmail: sourceEmail
       }, mockSendResponse, progressCallback);
 
       // 再次检查流程状态
