@@ -433,10 +433,21 @@ body {
 /* 历史管理器中的 form-group */
 .email-history-manager .form-group,
 .mail-content-manager .form-group {
-    height: 100%;
     display: flex;
     flex-direction: column;
     margin: 0;
+}
+
+/* 邮件内容历史的主要内容区域 */
+.mail-content-manager .form-group:last-child {
+    height: 100%;
+    flex: 1;
+}
+
+/* 搜索区域不占据全部高度 */
+.mail-content-manager .form-group:first-child {
+    height: auto;
+    flex: none;
 }
 
 /* 搜索容器样式 */
