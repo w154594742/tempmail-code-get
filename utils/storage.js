@@ -16,7 +16,7 @@ class StorageManager {
         emailHistory: [],
         codeHistory: [],
         mailContentHistory: [],
-        maxEmailHistory: 100,
+        maxEmailHistory: 1000, // 修改：提升邮箱历史记录限制到1000条
         maxCodeHistory: 10,
         maxMailContentHistory: 1000
       },
@@ -99,7 +99,9 @@ class StorageManager {
       const emailItem = {
         email: email,
         timestamp: Date.now(),
-        id: this.generateId()
+        id: this.generateId(),
+        isFavorite: false, // 新增：收藏状态，默认为false
+        note: "" // 新增：备注信息，默认为空字符串
       };
 
       // 检查是否已存在
@@ -111,9 +113,9 @@ class StorageManager {
       // 添加到开头
       historyData.emailHistory.unshift(emailItem);
 
-      // 保持最大数量限制
+      // 智能删除逻辑：保持最大数量限制，优先删除非收藏项
       if (historyData.emailHistory.length > historyData.maxEmailHistory) {
-        historyData.emailHistory = historyData.emailHistory.slice(0, historyData.maxEmailHistory);
+        this._smartTrimEmailHistory(historyData);
       }
 
       await this.setConfig('historyData', historyData);
@@ -317,6 +319,78 @@ class StorageManager {
     } catch (error) {
       console.error('获取上次验证码失败:', error);
       return null;
+    }
+  }
+
+  // 智能删除邮箱历史记录：优先删除非收藏项
+  _smartTrimEmailHistory(historyData) {
+    const maxHistory = historyData.maxEmailHistory;
+    if (historyData.emailHistory.length <= maxHistory) {
+      return; // 无需删除
+    }
+
+    // 分离收藏和非收藏项
+    const favoriteItems = historyData.emailHistory.filter(item => item.isFavorite);
+    const nonFavoriteItems = historyData.emailHistory.filter(item => !item.isFavorite);
+
+    // 如果收藏项数量已经超过限制，按时间戳删除最旧的收藏项
+    if (favoriteItems.length >= maxHistory) {
+      favoriteItems.sort((a, b) => b.timestamp - a.timestamp); // 按时间戳降序排列
+      historyData.emailHistory = favoriteItems.slice(0, maxHistory);
+      return;
+    }
+
+    // 计算可保留的非收藏项数量
+    const availableSlots = maxHistory - favoriteItems.length;
+
+    // 按时间戳排序非收藏项，保留最新的
+    nonFavoriteItems.sort((a, b) => b.timestamp - a.timestamp);
+    const keptNonFavoriteItems = nonFavoriteItems.slice(0, availableSlots);
+
+    // 合并收藏项和保留的非收藏项，按时间戳排序
+    historyData.emailHistory = [...favoriteItems, ...keptNonFavoriteItems]
+      .sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  // 设置邮箱收藏状态
+  async setEmailFavorite(id, isFavorite, note = "") {
+    try {
+      const historyData = await this.getConfig('historyData');
+      const emailIndex = historyData.emailHistory.findIndex(item => item.id === id);
+
+      if (emailIndex === -1) {
+        return false; // 未找到对应记录
+      }
+
+      // 更新收藏状态和备注
+      historyData.emailHistory[emailIndex].isFavorite = isFavorite;
+      historyData.emailHistory[emailIndex].note = note || "";
+
+      await this.setConfig('historyData', historyData);
+      return true;
+    } catch (error) {
+      console.error('设置邮箱收藏状态失败:', error);
+      return false;
+    }
+  }
+
+  // 搜索邮箱历史记录
+  async searchEmailHistory(keyword) {
+    try {
+      const historyData = await this.getConfig('historyData');
+      if (!keyword || keyword.trim() === "") {
+        return historyData.emailHistory || [];
+      }
+
+      const searchTerm = keyword.toLowerCase().trim();
+      return historyData.emailHistory.filter(item => {
+        const emailMatch = item.email.toLowerCase().includes(searchTerm);
+        const noteMatch = item.note && item.note.toLowerCase().includes(searchTerm);
+        return emailMatch || noteMatch;
+      });
+    } catch (error) {
+      console.error('搜索邮箱历史失败:', error);
+      return [];
     }
   }
 

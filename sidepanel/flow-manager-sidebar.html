@@ -56,7 +56,7 @@
                             <div class="action-icon">📧</div>
                             <div class="action-content">
                                 <div class="action-title">邮箱历史与邮件历史管理</div>
-                                <div class="action-desc">查看生成的临时邮箱历史和邮件内容历史</div>
+                                <div class="action-desc">管理生成的临时邮箱历史和邮件内容历史</div>
                             </div>
                         </button>
                         <button class="quick-action-card" id="flowManagerBtn">
@@ -118,6 +118,16 @@
                                     <button id="clearAllEmailHistoryBtn" class="btn btn-danger btn-small"
                                         style="display: none;">清除全部</button>
                                 </div>
+                                <!-- 搜索框 -->
+                                <div class="search-container">
+                                    <div class="search-input-group">
+                                        <input type="text" id="emailSearchInput" placeholder="搜索邮箱地址或备注..." class="search-input">
+                                        <button id="clearSearchBtn" class="btn-icon clear-search-btn" title="清空搜索" style="display: none;">✕</button>
+                                    </div>
+                                    <div class="search-results-info" id="searchResultsInfo" style="display: none;">
+                                        <span class="search-results-text">找到 <span id="searchResultsCount">0</span> 条记录</span>
+                                    </div>
+                                </div>
                                 <div class="email-history" id="emailHistory">
                                     <!-- 邮箱历史将在这里显示 -->
                                 </div>
@@ -156,6 +166,8 @@
                     </div>
                 </div>
             </div>
+
+
 
             <!-- 流程管理页面 -->
             <div id="flowManagerPage" class="page">
@@ -647,6 +659,27 @@
                         <li>{{code}}变量在需要时从邮箱自动提取</li>
                     </ul>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑收藏备注弹窗 -->
+    <div id="edit-note-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">💭 编辑收藏备注</h3>
+                <button class="modal-close-btn" id="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="email-info-display">
+                    <span class="email-label">📧 邮箱：</span>
+                    <span id="modal-email-address" class="modal-email-text"></span>
+                </div>
+                <textarea id="modal-note-input" class="modal-textarea" placeholder="为这个邮箱添加备注信息，方便以后查找..." rows="4"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button id="modal-save-btn" class="btn btn-primary">保存收藏</button>
+                <button id="modal-cancel-btn" class="btn btn-secondary">取消</button>
             </div>
         </div>
     </div>

@@ -52,6 +52,17 @@ class SidebarFlowManager {
     // 步骤管理
     document.getElementById('addStepBtn').addEventListener('click', () => this.addStep());
 
+    // 邮箱搜索功能
+    const emailSearchInput = document.getElementById('emailSearchInput');
+    if (emailSearchInput) {
+      emailSearchInput.addEventListener('input', (e) => this.handleEmailSearch(e.target.value));
+    }
+
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    if (clearSearchBtn) {
+      clearSearchBtn.addEventListener('click', () => this.clearEmailSearch());
+    }
+
 
   }
 
@@ -1697,24 +1708,50 @@ class SidebarFlowManager {
     // 显示清除全部按钮
     clearAllBtn.style.display = 'inline-block';
 
-    container.innerHTML = history.slice(0, 20).map(item => `
-      <div class="email-history-item" data-id="${item.id}">
-        <div class="email-info">
-          <div class="email-meta-item">
-            <span class="email-meta-label">📧 邮箱:</span>
-            <span class="email-meta-value email-address" title="${item.email}">${item.email}</span>
+    container.innerHTML = history.slice(0, 20).map(item => {
+      // 确保向后兼容：为旧数据提供默认值
+      const isFavorite = item.isFavorite || false;
+      const note = item.note || '';
+
+      // HTML转义函数，防止XSS攻击
+      const escapeHtml = (text) => {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      };
+
+      const escapedEmail = escapeHtml(item.email);
+      const escapedNote = escapeHtml(note);
+      const escapedId = escapeHtml(item.id);
+
+      // 动态布局：检查是否有备注内容
+      const hasNoteClass = note ? 'has-note' : '';
+
+      return `
+        <div class="email-history-item ${isFavorite ? 'favorited' : ''} ${hasNoteClass}" data-id="${escapedId}">
+          <div class="email-info">
+            <div class="email-meta-item">
+              <span class="email-meta-label">📧 邮箱:</span>
+              <span class="email-meta-value email-address" title="${escapedEmail}">${escapedEmail}</span>
+            </div>
+            <div class="email-meta-item">
+              <span class="email-meta-label">🕒 创建时间:</span>
+              <span class="email-meta-value email-time">${new Date(item.timestamp).toLocaleString()}</span>
+            </div>
+            ${note ? `<div class="email-note"><span class="email-note-content">${escapedNote}</span></div>` : ''}
           </div>
-          <div class="email-meta-item">
-            <span class="email-meta-label">🕒 创建时间:</span>
-            <span class="email-meta-value email-time">${new Date(item.timestamp).toLocaleString()}</span>
+          <div class="email-actions">
+            <button class="btn-icon favorite-email-btn ${isFavorite ? 'favorited' : ''}"
+                    title="${isFavorite ? '取消收藏' : '添加收藏'}"
+                    data-id="${escapedId}"
+                    data-favorited="${isFavorite}"
+                    data-note="${escapedNote}">${isFavorite ? '⭐' : '☆'}</button>
+            <button class="btn-icon copy-email-btn" title="复制邮箱" data-email="${escapedEmail}">📋</button>
+            <button class="btn-icon delete-email-btn" title="删除记录" data-id="${escapedId}">🗑️</button>
           </div>
         </div>
-        <div class="email-actions">
-          <button class="btn-icon copy-email-btn" title="复制邮箱" data-email="${item.email}">📋</button>
-          <button class="btn-icon delete-email-btn" title="删除记录" data-id="${item.id}">🗑️</button>
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     // 绑定事件监听器
     this.bindEmailHistoryEvents();
@@ -1871,6 +1908,29 @@ class SidebarFlowManager {
 
   // 绑定邮箱历史事件
   bindEmailHistoryEvents() {
+    // 收藏邮箱按钮事件
+    document.querySelectorAll('.favorite-email-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+
+        const id = btn.getAttribute('data-id');
+        const isFavorited = btn.getAttribute('data-favorited') === 'true';
+        const currentNote = btn.getAttribute('data-note') || '';
+
+        if (isFavorited) {
+          // 取消收藏
+          this.setEmailFavorite(id, false, '');
+        } else {
+          // 添加收藏，显示编辑弹窗
+          const emailAddress = btn.closest('.email-history-item').querySelector('.email-meta-value.email-address').textContent;
+          this.showEditModal(id, currentNote, emailAddress);
+        }
+      });
+    });
+
+    // 弹窗事件绑定（只需要绑定一次）
+    this.bindModalEvents();
+
     // 复制邮箱按钮事件
     document.querySelectorAll('.copy-email-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -2999,6 +3059,197 @@ class SidebarFlowManager {
   // 复制选择器到剪切板（保持向后兼容）
   copySelectorToClipboard(text) {
     return this.copyToClipboard(text, '选择器已复制到剪切板', '选择器已填充到输入框');
+  }
+
+  // 邮箱搜索功能
+  async handleEmailSearch(keyword) {
+    const clearBtn = document.getElementById('clearSearchBtn');
+    const resultsInfo = document.getElementById('searchResultsInfo');
+    const resultsCount = document.getElementById('searchResultsCount');
+
+    // 显示/隐藏清空按钮
+    if (keyword.trim()) {
+      clearBtn.style.display = 'flex';
+    } else {
+      clearBtn.style.display = 'none';
+      resultsInfo.style.display = 'none';
+    }
+
+    try {
+      let results;
+      if (keyword.trim() === '') {
+        // 如果搜索关键词为空，显示所有历史记录
+        const response = await chrome.runtime.sendMessage({ action: 'getHistory', type: 'email' });
+        results = response.success ? response.history : [];
+      } else {
+        // 执行搜索
+        const response = await chrome.runtime.sendMessage({
+          action: 'searchEmailHistory',
+          keyword: keyword
+        });
+        results = response.success ? response.results : [];
+      }
+
+      // 渲染搜索结果
+      this.renderEmailHistory(results);
+
+      // 显示搜索结果信息
+      if (keyword.trim()) {
+        resultsCount.textContent = results.length;
+        resultsInfo.style.display = 'block';
+      }
+
+    } catch (error) {
+      console.error('搜索邮箱历史失败:', error);
+      this.showNotification('搜索失败', 'error');
+    }
+  }
+
+  // 清空搜索
+  async clearEmailSearch() {
+    const searchInput = document.getElementById('emailSearchInput');
+    const clearBtn = document.getElementById('clearSearchBtn');
+    const resultsInfo = document.getElementById('searchResultsInfo');
+
+    searchInput.value = '';
+    clearBtn.style.display = 'none';
+    resultsInfo.style.display = 'none';
+
+    // 重新加载完整的邮箱历史
+    await this.loadEmailHistory();
+  }
+
+  // 显示编辑备注弹窗
+  showEditModal(emailId, currentNote = '', emailAddress = '') {
+    const modal = document.getElementById('edit-note-modal');
+    const emailDisplay = document.getElementById('modal-email-address');
+    const noteInput = document.getElementById('modal-note-input');
+
+    if (!modal || !emailDisplay || !noteInput) {
+      console.error('找不到弹窗元素');
+      return;
+    }
+
+    // 设置当前编辑的邮箱ID
+    this.currentFavoriteEmailId = emailId;
+
+    // 显示邮箱地址和当前备注
+    emailDisplay.textContent = emailAddress;
+    noteInput.value = currentNote;
+
+    // 显示弹窗
+    modal.classList.add('show');
+
+    // 聚焦到输入框
+    setTimeout(() => {
+      noteInput.focus();
+      noteInput.select(); // 选中现有文本便于编辑
+    }, 150);
+  }
+
+  // 隐藏编辑备注弹窗
+  hideEditModal() {
+    const modal = document.getElementById('edit-note-modal');
+    if (!modal) {
+      return;
+    }
+
+    modal.classList.remove('show');
+    this.currentFavoriteEmailId = null;
+  }
+
+  // 绑定弹窗事件（只需要绑定一次）
+  bindModalEvents() {
+    // 避免重复绑定
+    if (this.modalEventsBound) {
+      return;
+    }
+    this.modalEventsBound = true;
+
+    const modal = document.getElementById('edit-note-modal');
+    const saveBtn = document.getElementById('modal-save-btn');
+    const cancelBtn = document.getElementById('modal-cancel-btn');
+    const closeBtn = document.getElementById('modal-close-btn');
+
+    // 保存按钮
+    saveBtn.addEventListener('click', () => {
+      this.saveModalNote();
+    });
+
+    // 取消按钮
+    cancelBtn.addEventListener('click', () => {
+      this.hideEditModal();
+    });
+
+    // 关闭按钮
+    closeBtn.addEventListener('click', () => {
+      this.hideEditModal();
+    });
+
+    // 点击遮罩关闭
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        this.hideEditModal();
+      }
+    });
+
+    // ESC键关闭
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal.classList.contains('show')) {
+        this.hideEditModal();
+      }
+    });
+  }
+
+  // 保存弹窗编辑的备注
+  async saveModalNote() {
+    const noteInput = document.getElementById('modal-note-input');
+
+    if (!noteInput) {
+      console.error('找不到弹窗输入框');
+      return;
+    }
+
+    const note = noteInput.value.trim();
+    const emailId = this.currentFavoriteEmailId;
+
+    if (!emailId) {
+      console.error('没有当前编辑的邮箱ID');
+      return;
+    }
+
+    // 设置收藏状态并保存备注
+    await this.setEmailFavorite(emailId, true, note);
+
+    // 隐藏弹窗
+    this.hideEditModal();
+  }
+
+
+
+
+
+  // 设置邮箱收藏状态
+  async setEmailFavorite(id, isFavorite, note = '') {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'setEmailFavorite',
+        id: id,
+        isFavorite: isFavorite,
+        note: note
+      });
+
+      if (response.success) {
+        this.showNotification(isFavorite ? '已添加到收藏' : '已取消收藏', 'success');
+        // 重新加载邮箱历史以更新显示
+        await this.loadEmailHistory();
+      } else {
+        this.showNotification('操作失败: ' + response.message, 'error');
+      }
+    } catch (error) {
+      console.error('设置收藏状态失败:', error);
+      this.showNotification('操作失败', 'error');
+    }
   }
 
   // 显示通知

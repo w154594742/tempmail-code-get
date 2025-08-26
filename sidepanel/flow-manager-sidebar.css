@@ -439,6 +439,75 @@ body {
     margin: 0;
 }
 
+/* 搜索容器样式 */
+.search-container {
+    margin-bottom: 15px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.search-input-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.search-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.clear-search-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.clear-search-btn:hover {
+    background: #5a6268;
+    transform: scale(1.05);
+}
+
+.search-results-info {
+    font-size: 12px;
+    color: #6c757d;
+    text-align: center;
+    padding: 4px 0;
+}
+
+.search-results-text {
+    font-weight: 500;
+}
+
+#searchResultsCount {
+    color: #007bff;
+    font-weight: 600;
+}
+
 /* 邮箱历史容器 */
 .email-history {
     flex: 1;
@@ -456,66 +525,100 @@ body {
 /* 邮箱历史项 */
 .email-history-item {
     display: flex;
-    justify-content: space-between;
+    min-height: 64px;
+    padding: 16px;
     align-items: center;
-    padding: 14px;
+    gap: 16px;
     border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    margin-bottom: 10px;
+    border-radius: 10px;
+    margin-bottom: 8px;
     background: #fff;
-    transition: all 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    position: relative;
+    overflow: hidden;
 }
 
 .email-history-item:hover {
     border-color: #007bff;
-    box-shadow: 0 2px 8px rgba(0,123,255,0.15);
-    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,123,255,0.12);
+    transform: translateY(-2px);
+}
+
+.email-history-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #007bff, transparent);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.email-history-item:hover::before {
+    opacity: 1;
 }
 
 /* 邮箱信息区域 */
 .email-info {
-    flex: 1;
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap: 4px;
     min-width: 0; /* 允许文本截断 */
+    overflow: hidden; /* 确保内容不会溢出 */
+    flex-shrink: 1; /* 允许收缩 */
 }
 
 /* 邮箱历史元信息项样式 */
 .email-history-item .email-meta-item {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px;
     align-items: center;
-    gap: 4px;
-    margin-bottom: 2px;
+    margin-bottom: 0;
 }
+
+
 
 .email-history-item .email-meta-label {
     font-size: 11px;
-    color: #666;
-    font-weight: 500;
+    color: #6c757d;
+    font-weight: 600;
     white-space: nowrap;
     min-width: fit-content;
+    opacity: 0.8;
 }
 
 .email-history-item .email-meta-value {
-    font-size: 12px;
-    color: #333;
-    word-break: break-all;
-    flex: 1;
+    font-size: 13px;
+    color: #2c3e50;
+    word-break: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.4;
 }
 
 .email-history-item .email-meta-value.email-address {
-    font-family: 'Courier New', monospace;
-    color: #2c3e50;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Courier New', monospace;
+    color: #007bff;
     font-weight: 500;
+    font-size: 12px;
+    background: rgba(0, 123, 255, 0.08);
+    padding: 2px 6px;
+    border-radius: 4px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 100%;
 }
 
 .email-history-item .email-meta-value.email-time {
-    color: #666;
+    color: #6c757d;
+    font-size: 11px;
+    font-weight: 400;
 }
 
 /* 保留原有样式以兼容其他地方的使用 */
@@ -538,29 +641,39 @@ body {
 /* 邮箱操作按钮区域 */
 .email-actions {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     flex-shrink: 0;
+    align-items: center;
+    margin-left: auto;
 }
 
 .btn-icon {
-    background: none;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    padding: 6px 8px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 0;
     cursor: pointer;
-    font-size: 12px;
-    transition: all 0.2s ease;
+    font-size: 13px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
+    position: relative;
+    overflow: hidden;
 }
 
 .btn-icon:hover {
-    background-color: #f8f9fa;
+    background-color: #e9ecef;
     border-color: #adb5bd;
-    transform: translateY(-1px);
+    transform: translateY(-1px) scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.btn-icon:active {
+    transform: translateY(0) scale(0.95);
+    transition-duration: 0.1s;
 }
 
 .copy-email-btn:hover {
@@ -573,6 +686,361 @@ body {
     background-color: #ffebee;
     border-color: #f44336;
     color: #d32f2f;
+}
+
+/* 收藏按钮样式 */
+.favorite-email-btn {
+    background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+    border: 1px solid #ffeaa7;
+    color: #f39c12;
+    position: relative;
+}
+
+.favorite-email-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    border-radius: inherit;
+}
+
+.favorite-email-btn:hover {
+    border-color: #f39c12;
+    transform: translateY(-1px) scale(1.05);
+    box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3);
+}
+
+.favorite-email-btn:hover::before {
+    opacity: 0.1;
+}
+
+.favorite-email-btn.favorited {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    border-color: #d68910;
+    color: white;
+    box-shadow: 0 2px 8px rgba(243, 156, 18, 0.4);
+}
+
+.favorite-email-btn.favorited:hover {
+    background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+    border-color: #ca6f1e;
+    box-shadow: 0 4px 12px rgba(243, 156, 18, 0.5);
+}
+
+/* 收藏邮箱项的特殊样式 */
+.email-history-item.favorited {
+    background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+    border-color: #f39c12;
+    position: relative;
+}
+
+.email-history-item.favorited::before {
+    background: linear-gradient(90deg, transparent, #f39c12, transparent);
+}
+
+.email-history-item.favorited:hover {
+    border-color: #e67e22;
+    box-shadow: 0 4px 16px rgba(243, 156, 18, 0.2);
+    transform: translateY(-2px);
+}
+
+.email-history-item.favorited:hover::before {
+    opacity: 1;
+}
+
+
+
+
+
+/* 备注显示样式 */
+.email-note {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px;
+    align-items: center;
+    margin-top: 2px;
+    padding: 6px 8px;
+    background: rgba(0, 123, 255, 0.05);
+    border-radius: 4px;
+    border-left: 3px solid #007bff;
+}
+
+.email-note::before {
+    content: "💭 备注：";
+    font-size: 10px;
+    color: #007bff;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.email-note-content {
+    font-size: 11px;
+    color: #495057;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+
+
+/* 编辑备注弹窗样式 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    z-index: 9999;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
+}
+
+.modal-overlay.show {
+    display: block;
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 450px;
+    max-height: 80vh;
+    overflow: hidden;
+    box-shadow:
+        0 20px 25px -5px rgba(0, 0, 0, 0.1),
+        0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+.modal-close-btn:hover {
+    background: #f8f9fa;
+    color: #495057;
+}
+
+.modal-body {
+    padding: 20px 24px;
+}
+
+.email-info-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+}
+
+.email-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.modal-email-text {
+    font-size: 14px;
+    color: #2c3e50;
+    font-family: 'Courier New', monospace;
+    background: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+}
+
+.modal-textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 100px;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+}
+
+.modal-textarea:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.modal-textarea::placeholder {
+    color: #6c757d;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding: 16px 24px 20px;
+    border-top: 1px solid #e9ecef;
+    background: #f8f9fa;
+}
+
+.modal-footer .btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    min-width: 100px;
+}
+
+.modal-footer .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.modal-footer .btn-primary:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.modal-footer .btn-secondary {
+    background: white;
+    color: #6c757d;
+    border: 2px solid #dee2e6;
+}
+
+.modal-footer .btn-secondary:hover {
+    background: #f8f9fa;
+    color: #495057;
+    border-color: #adb5bd;
+}
+
+/* 侧边栏环境特殊处理 */
+@media (max-width: 500px) {
+    .modal-content {
+        width: 95%;
+        max-width: none;
+        margin: 10px;
+        border-radius: 12px;
+    }
+
+    .modal-header {
+        padding: 16px 20px 12px;
+    }
+
+    .modal-body {
+        padding: 16px 20px;
+    }
+
+    .modal-footer {
+        padding: 12px 20px 16px;
+    }
+
+    .modal-textarea {
+        min-height: 80px;
+    }
+}
+
+/* 响应式设计优化 */
+@media (max-width: 480px) {
+    .email-history-item {
+        flex-direction: column;
+        min-height: 80px;
+        padding: 12px;
+        gap: 8px;
+    }
+
+    .email-actions {
+        justify-content: center;
+        gap: 8px;
+        margin-left: 0;
+    }
+
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+
+    .email-history-item .email-meta-item {
+        grid-template-columns: auto 1fr;
+        gap: 6px;
+    }
+
+    .email-history-item .email-meta-value.email-address {
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+    .email-history-item {
+        min-height: 68px;
+        padding: 14px;
+    }
+
+    .email-actions {
+        gap: 5px;
+    }
+
+    .btn-icon {
+        width: 30px;
+        height: 30px;
+    }
+}
+
+/* 高分辨率屏幕优化 */
+@media (min-width: 1200px) {
+    .email-history-item {
+        min-height: 72px;
+        padding: 18px;
+        border-radius: 12px;
+    }
+
+    .email-history-item .email-meta-value {
+        font-size: 14px;
+    }
+
+    .email-history-item .email-meta-value.email-address {
+        font-size: 13px;
+    }
 }
 
 /* 清除全部按钮 */
@@ -1041,7 +1509,6 @@ body {
         height: 36px;
         border-radius: 8px;
     }
-}
 }
 
 .back-btn:hover {
@@ -1734,6 +2201,8 @@ body {
     resize: vertical;
     min-height: 60px;
 }
+
+
 
 /* 快速步骤按钮 */
 .quick-step-buttons {

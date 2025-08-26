@@ -88,6 +88,14 @@ class BackgroundService {
           await this.handleDeleteHistoryItem(message, sendResponse);
           break;
 
+        case 'setEmailFavorite':
+          await this.handleSetEmailFavorite(message, sendResponse);
+          break;
+
+        case 'searchEmailHistory':
+          await this.handleSearchEmailHistory(message, sendResponse);
+          break;
+
         case 'getMailContentHistory':
           await this.handleGetMailContentHistory(message, sendResponse);
           break;
@@ -578,6 +586,38 @@ class BackgroundService {
       });
     } catch (error) {
       console.error('清除邮件内容历史失败:', error);
+      sendResponse({ success: false, error: error.message });
+    }
+  }
+
+  // 设置邮箱收藏状态
+  async handleSetEmailFavorite(message, sendResponse) {
+    try {
+      const { id, isFavorite, note } = message;
+      const result = await storageManager.setEmailFavorite(id, isFavorite, note);
+
+      sendResponse({
+        success: result,
+        message: result ? '收藏状态已更新' : '更新收藏状态失败'
+      });
+    } catch (error) {
+      console.error('设置邮箱收藏状态失败:', error);
+      sendResponse({ success: false, error: error.message });
+    }
+  }
+
+  // 搜索邮箱历史记录
+  async handleSearchEmailHistory(message, sendResponse) {
+    try {
+      const { keyword } = message;
+      const results = await storageManager.searchEmailHistory(keyword);
+
+      sendResponse({
+        success: true,
+        results: results
+      });
+    } catch (error) {
+      console.error('搜索邮箱历史失败:', error);
       sendResponse({ success: false, error: error.message });
     }
   }
