@@ -2879,7 +2879,9 @@ body {
 
 .variable-buttons {
     display: flex;
-    gap: 8px;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: 100%;
 }
 
 .btn-variable {

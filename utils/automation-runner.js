@@ -173,18 +173,31 @@ class AutomationRunner {
       tabId: this.tabId
     };
 
-    // 检查流程是否需要邮箱变量
+    // 检查流程是否需要各种变量
     const needsEmail = this.checkIfNeedsEmail();
+    const needsNameVariables = this.checkIfNeedsNameVariables();
+    const needsPassword = this.checkIfNeedsPasswordVariable();
 
-    // 按需生成邮箱地址
-    if (needsEmail && !this.context.email) {
+    // 按需生成邮箱地址和姓名变量
+    if ((needsEmail || needsNameVariables) && !this.context.email) {
       try {
         // 直接调用emailGenerator，避免消息传递的问题
         if (typeof emailGenerator !== 'undefined') {
           const email = await emailGenerator.generateEmail();
           this.context.email = email;
+
+          // 从邮箱地址中提取姓名组件
+          const nameComponents = this.extractNameComponentsFromEmail(email);
+          this.context.firstName = nameComponents.firstName;
+          this.context.lastName = nameComponents.lastName;
+          this.context.fullName = nameComponents.fullName;
+
           console.log('生成邮箱地址:', email);
+          console.log('提取姓名组件:', nameComponents);
           this.sendLog(`📧 生成邮箱: ${email}`, 'success');
+          if (needsNameVariables) {
+            this.sendLog(`👤 提取姓名: ${nameComponents.fullName}`, 'success');
+          }
         } else {
           throw new Error('邮箱生成器未初始化');
         }
@@ -203,12 +216,38 @@ class AutomationRunner {
         const domain = domains[Math.floor(Math.random() * domains.length)];
 
         this.context.email = `${firstName}${lastName}${randomNum}@${domain}`;
+        this.context.firstName = firstName;
+        this.context.lastName = lastName;
+        this.context.fullName = `${firstName}.${lastName}`;
+
         console.log('使用默认邮箱格式:', this.context.email);
+        console.log('使用默认姓名组件:', { firstName, lastName, fullName: this.context.fullName });
         this.sendLog(`📧 使用默认邮箱: ${this.context.email}`, 'info');
+        if (needsNameVariables) {
+          this.sendLog(`👤 使用默认姓名: ${this.context.fullName}`, 'info');
+        }
       }
-    } else if (!needsEmail) {
-      console.log('流程不需要邮箱变量，跳过邮箱生成');
-      this.sendLog('ℹ️ 流程不需要邮箱变量，跳过邮箱生成', 'info');
+    } else if (!needsEmail && !needsNameVariables) {
+      console.log('流程不需要邮箱或姓名变量，跳过生成');
+      this.sendLog('ℹ️ 流程不需要邮箱或姓名变量，跳过生成', 'info');
+    }
+
+    // 按需生成密码变量
+    if (needsPassword && !this.context.password) {
+      try {
+        this.context.password = this.generateSecurePassword();
+        console.log('生成安全密码:', this.context.password);
+        this.sendLog(`🔐 生成安全密码: ${this.context.password}`, 'success');
+      } catch (error) {
+        console.error('生成密码失败:', error);
+        this.sendLog(`⚠️ 密码生成失败: ${error.message}`, 'warn');
+        // 使用默认密码
+        this.context.password = 'DefaultPass123!@#';
+        this.sendLog(`🔐 使用默认密码: ${this.context.password}`, 'info');
+      }
+    } else if (!needsPassword) {
+      console.log('流程不需要密码变量，跳过密码生成');
+      this.sendLog('ℹ️ 流程不需要密码变量，跳过密码生成', 'info');
     }
 
     // 获取验证码的处理
@@ -246,6 +285,235 @@ class AutomationRunner {
     }
 
     return false;
+  }
+
+  // 检查流程是否需要姓名变量
+  checkIfNeedsNameVariables() {
+    const nameVariables = ['{{firstName}}', '{{lastName}}', '{{fullName}}'];
+
+    for (const step of this.config.steps) {
+      // 检查步骤的value字段是否包含姓名变量
+      if (step.value && typeof step.value === 'string') {
+        for (const nameVar of nameVariables) {
+          if (step.value.includes(nameVar)) {
+            return true;
+          }
+        }
+      }
+
+      // 检查步骤的其他可能包含变量的字段
+      if (step.selector && typeof step.selector === 'string') {
+        for (const nameVar of nameVariables) {
+          if (step.selector.includes(nameVar)) {
+            return true;
+          }
+        }
+      }
+
+      // 检查步骤的options中是否有使用姓名变量的地方
+      if (step.options) {
+        const optionsStr = JSON.stringify(step.options);
+        for (const nameVar of nameVariables) {
+          if (optionsStr.includes(nameVar)) {
+            return true;
+          }
+        }
+      }
+    }
+
+    // 检查流程的variables配置
+    if (this.config.variables) {
+      for (const nameVar of nameVariables) {
+        const varName = nameVar.replace(/[{}]/g, ''); // 移除大括号
+        if (this.config.variables[varName] === nameVar) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  // 检查流程是否需要密码变量
+  checkIfNeedsPasswordVariable() {
+    for (const step of this.config.steps) {
+      // 检查步骤的value字段是否包含{{password}}
+      if (step.value && typeof step.value === 'string' && step.value.includes('{{password}}')) {
+        return true;
+      }
+
+      // 检查步骤的其他可能包含变量的字段
+      if (step.selector && typeof step.selector === 'string' && step.selector.includes('{{password}}')) {
+        return true;
+      }
+
+      // 检查步骤的options中是否有使用password变量的地方
+      if (step.options) {
+        const optionsStr = JSON.stringify(step.options);
+        if (optionsStr.includes('{{password}}')) {
+          return true;
+        }
+      }
+    }
+
+    // 检查流程的variables配置
+    if (this.config.variables && this.config.variables.password === '{{password}}') {
+      return true;
+    }
+
+    return false;
+  }
+
+  // 从邮箱地址中提取姓名组件
+  extractNameComponentsFromEmail(email) {
+    try {
+      // 提取用户名部分（@符号之前）
+      const username = email.split('@')[0];
+
+      // 移除数字后缀，获取姓名部分
+      const nameMatch = username.match(/^([a-zA-Z]+)([a-zA-Z]+)\d*$/);
+
+      if (nameMatch && nameMatch.length >= 3) {
+        // 假设格式是 firstNamelastName123456
+        // 需要智能分割姓和名
+        const fullNamePart = nameMatch[1] + nameMatch[2];
+
+        // 使用预定义的姓名列表来智能分割
+        const { firstName, lastName } = this.smartSplitName(fullNamePart);
+
+        return {
+          firstName: firstName,
+          lastName: lastName,
+          fullName: `${firstName}.${lastName}`
+        };
+      } else {
+        // 如果无法解析，使用默认值
+        return {
+          firstName: 'user',
+          lastName: 'temp',
+          fullName: 'user.temp'
+        };
+      }
+    } catch (error) {
+      console.error('提取姓名组件失败:', error);
+      return {
+        firstName: 'user',
+        lastName: 'temp',
+        fullName: 'user.temp'
+      };
+    }
+  }
+
+  // 智能分割姓名
+  smartSplitName(fullNamePart) {
+    // 预定义的常见名字和姓氏列表（简化版）
+    const commonFirstNames = [
+      'john', 'mary', 'david', 'sarah', 'michael', 'jennifer', 'robert', 'lisa', 'james', 'patricia',
+      'william', 'elizabeth', 'richard', 'barbara', 'joseph', 'susan', 'thomas', 'jessica', 'charles', 'nancy'
+    ];
+
+    const commonLastNames = [
+      'smith', 'johnson', 'brown', 'davis', 'miller', 'wilson', 'moore', 'taylor', 'anderson', 'thomas',
+      'jackson', 'white', 'harris', 'martin', 'thompson', 'garcia', 'martinez', 'robinson', 'clark', 'rodriguez'
+    ];
+
+    const lowerFullName = fullNamePart.toLowerCase();
+
+    // 尝试匹配已知的名字
+    for (const firstName of commonFirstNames) {
+      if (lowerFullName.startsWith(firstName)) {
+        const remainingPart = lowerFullName.substring(firstName.length);
+
+        // 检查剩余部分是否是已知的姓氏
+        for (const lastName of commonLastNames) {
+          if (remainingPart === lastName) {
+            return { firstName, lastName };
+          }
+        }
+
+        // 如果剩余部分不是已知姓氏，但长度合理，就使用它
+        if (remainingPart.length >= 3 && remainingPart.length <= 10) {
+          return { firstName, lastName: remainingPart };
+        }
+      }
+    }
+
+    // 如果无法智能分割，使用简单的分割方法
+    const midPoint = Math.floor(lowerFullName.length / 2);
+    return {
+      firstName: lowerFullName.substring(0, midPoint) || 'user',
+      lastName: lowerFullName.substring(midPoint) || 'temp'
+    };
+  }
+
+  // 生成安全密码
+  generateSecurePassword() {
+    try {
+      // 定义字符集
+      const passwordChars = {
+        uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+        lowercase: 'abcdefghijklmnopqrstuvwxyz',
+        special: '!@#$%^&*()_+-=[]{}|;:,.<>?'
+      };
+
+      // 随机确定长度（16-20位）
+      const length = Math.floor(Math.random() * 5) + 16;
+
+      // 确保每种类型至少有一个字符
+      const requiredChars = [
+        this.getRandomChar(passwordChars.uppercase),
+        this.getRandomChar(passwordChars.lowercase),
+        this.getRandomChar(passwordChars.special)
+      ];
+
+      // 填充剩余位置
+      const allChars = passwordChars.uppercase + passwordChars.lowercase + passwordChars.special;
+      const remainingLength = length - requiredChars.length;
+
+      for (let i = 0; i < remainingLength; i++) {
+        requiredChars.push(this.getRandomChar(allChars));
+      }
+
+      // 随机打乱数组
+      const password = this.shuffleArray(requiredChars).join('');
+
+      // 验证密码是否符合要求
+      if (this.validatePassword(password)) {
+        return password;
+      } else {
+        // 如果验证失败，递归重新生成
+        return this.generateSecurePassword();
+      }
+    } catch (error) {
+      console.error('生成密码失败:', error);
+      // 返回一个默认的安全密码
+      return 'DefaultPass123!@#';
+    }
+  }
+
+  // 获取随机字符
+  getRandomChar(charSet) {
+    return charSet.charAt(Math.floor(Math.random() * charSet.length));
+  }
+
+  // 随机打乱数组
+  shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
+  // 验证密码是否符合要求
+  validatePassword(password) {
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password);
+    const hasValidLength = password.length >= 16 && password.length <= 20;
+
+    return hasUppercase && hasLowercase && hasSpecial && hasValidLength;
   }
 
   // 获取验证码（直接调用background方法，支持进度回调）

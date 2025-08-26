@@ -400,6 +400,14 @@
                                         title="插入邮箱变量">📧 邮箱</button>
                                     <button type="button" class="btn-variable" data-variable="{{code}}"
                                         title="插入验证码变量">🔢 验证码</button>
+                                    <button type="button" class="btn-variable" data-variable="{{lastName}}"
+                                        title="插入姓氏变量">👥 姓</button>
+                                    <button type="button" class="btn-variable" data-variable="{{firstName}}"
+                                        title="插入名字变量">👤 名</button>
+                                    <button type="button" class="btn-variable" data-variable="{{fullName}}"
+                                        title="插入姓名变量">📝 姓名</button>
+                                    <button type="button" class="btn-variable" data-variable="{{password}}"
+                                        title="插入随机密码变量">🔐 密码</button>
                                 </div>
                                 <button type="button" class="btn-help" title="变量说明">❓</button>
                             </div>
@@ -655,19 +663,41 @@
                 <div class="variable-item">
                     <div class="variable-name">📧 {{email}}</div>
                     <div class="variable-desc">系统自动获取的临时邮箱地址，用于注册和接收邮件</div>
-                    <div class="variable-example">示例：temp123@example.com</div>
+                    <div class="variable-example">示例：johnsmith123456@example.com</div>
                 </div>
                 <div class="variable-item">
                     <div class="variable-name">🔢 {{code}}</div>
                     <div class="variable-desc">系统自动从邮箱中提取的验证码，用于验证步骤</div>
                     <div class="variable-example">示例：123456</div>
                 </div>
+                <div class="variable-item">
+                    <div class="variable-name">👥 {{lastName}}</div>
+                    <div class="variable-desc">随机生成的英文姓氏，与邮箱地址中的姓氏保持一致</div>
+                    <div class="variable-example">示例：smith</div>
+                </div>
+                <div class="variable-item">
+                    <div class="variable-name">👤 {{firstName}}</div>
+                    <div class="variable-desc">随机生成的英文名字，与邮箱地址中的名字保持一致</div>
+                    <div class="variable-example">示例：john</div>
+                </div>
+                <div class="variable-item">
+                    <div class="variable-name">📝 {{fullName}}</div>
+                    <div class="variable-desc">完整的英文姓名，格式为"名.姓"</div>
+                    <div class="variable-example">示例：john.smith</div>
+                </div>
+                <div class="variable-item">
+                    <div class="variable-name">🔐 {{password}}</div>
+                    <div class="variable-desc">随机生成的安全密码，16-20位，包含大小写字母和特殊符号</div>
+                    <div class="variable-example">示例：Kj8#mP2$nQ9@xR5!</div>
+                </div>
                 <div class="variable-note">
                     <strong>💡 使用提示：</strong>
                     <ul>
                         <li>变量会在流程执行时自动替换为实际值</li>
-                        <li>{{email}}变量在流程开始时获取</li>
+                        <li>{{email}}、{{firstName}}、{{lastName}}、{{fullName}}、{{password}}变量在流程开始时同时生成</li>
                         <li>{{code}}变量在需要时从邮箱自动提取</li>
+                        <li>姓名变量与邮箱地址保持一致，确保数据的关联性</li>
+                        <li>密码变量每次生成都是唯一的，符合安全标准</li>
                     </ul>
                 </div>
             </div>
