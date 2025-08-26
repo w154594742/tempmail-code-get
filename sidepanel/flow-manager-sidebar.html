@@ -273,6 +273,46 @@
                             <div class="form-help">用于访问tempmail.plus API的PIN码</div>
                         </div>
 
+                        <div class="form-group">
+                            <label>邮箱生成方式:</label>
+                            <div class="radio-group">
+                                <label class="radio-option">
+                                    <input type="radio" name="emailGenerationMode" value="nameNumber" checked>
+                                    <span class="radio-text">姓名+数字</span>
+                                    <span class="radio-example">(johnsmith123456@domain.com)</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="emailGenerationMode" value="randomString">
+                                    <span class="radio-text">随机字符</span>
+                                    <span class="radio-example">(Kj8mP2nQ9@domain.com)</span>
+                                </label>
+                            </div>
+
+                            <!-- 随机字符配置区域 -->
+                            <div id="randomStringConfig" class="sub-config" style="display: none;">
+                                <div class="config-row">
+                                    <div class="config-item">
+                                        <label for="minLengthInput">最小长度:</label>
+                                        <input type="number" id="minLengthInput" min="3" max="30" value="6" class="length-input">
+                                    </div>
+                                    <div class="config-item">
+                                        <label for="maxLengthInput">最大长度:</label>
+                                        <input type="number" id="maxLengthInput" min="3" max="30" value="15" class="length-input">
+                                    </div>
+                                </div>
+                                <div class="config-help">
+                                    随机字符串长度范围，实际长度在此范围内随机选择
+                                </div>
+                                <div class="config-preview">
+                                    <span class="preview-label">预览示例:</span>
+                                    <span id="randomStringPreview" class="preview-text">Kj8mP2nQ9@example.com</span>
+                                    <button type="button" id="refreshPreviewBtn" class="btn-mini">🔄</button>
+                                </div>
+                            </div>
+
+                            <div class="form-help">选择邮箱用户名的生成方式</div>
+                        </div>
+
                         <!-- 数据管理按钮 -->
                         <div class="form-group">
                             <div class="button-group">

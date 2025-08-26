@@ -2484,6 +2484,32 @@ class SidebarFlowManager {
           console.log('设置PIN码输入框:', settings.pinCode);
         }
 
+        // 加载邮箱生成模式
+        const mode = settings.generationMode || 'nameNumber';
+        const modeRadio = document.querySelector(`input[name="emailGenerationMode"][value="${mode}"]`);
+        if (modeRadio) {
+          modeRadio.checked = true;
+
+          // 显示/隐藏随机字符串配置
+          const randomStringConfig = document.getElementById('randomStringConfig');
+          if (mode === 'randomString') {
+            randomStringConfig.style.display = 'block';
+          }
+        }
+
+        // 加载随机字符串配置
+        const randomConfig = settings.randomStringConfig || { minLength: 6, maxLength: 15 };
+        const minLengthInput = document.getElementById('minLengthInput');
+        const maxLengthInput = document.getElementById('maxLengthInput');
+        if (minLengthInput) minLengthInput.value = randomConfig.minLength;
+        if (maxLengthInput) maxLengthInput.value = randomConfig.maxLength;
+
+        // 更新预览
+        this.updateRandomStringPreview();
+
+        // 绑定邮箱生成模式事件
+        this.bindEmailGenerationModeEvents();
+
         // 绑定失焦自动保存事件
         this.bindSettingsAutoSave();
 
@@ -2542,10 +2568,20 @@ class SidebarFlowManager {
       const targetEmailInput = document.getElementById('targetEmailInput');
       const pinCodeInput = document.getElementById('pinCodeInput');
 
+      // 获取邮箱生成模式
+      const selectedMode = document.querySelector('input[name="emailGenerationMode"]:checked');
+      const minLengthInput = document.getElementById('minLengthInput');
+      const maxLengthInput = document.getElementById('maxLengthInput');
+
       const settings = {
         domains: domainsInput ? domainsInput.value.trim() : '',
         targetEmail: targetEmailInput ? targetEmailInput.value.trim() : '',
-        pinCode: pinCodeInput ? pinCodeInput.value.trim() : ''
+        pinCode: pinCodeInput ? pinCodeInput.value.trim() : '',
+        generationMode: selectedMode ? selectedMode.value : 'nameNumber',
+        randomStringConfig: {
+          minLength: parseInt(minLengthInput ? minLengthInput.value : '6') || 6,
+          maxLength: parseInt(maxLengthInput ? maxLengthInput.value : '15') || 15
+        }
       };
 
       console.log('保存设置:', settings);
@@ -3469,6 +3505,110 @@ class SidebarFlowManager {
         notification.parentNode.removeChild(notification);
       }
     }, 3000);
+  }
+
+  // 绑定邮箱生成模式切换事件
+  bindEmailGenerationModeEvents() {
+    const modeRadios = document.querySelectorAll('input[name="emailGenerationMode"]');
+    const randomStringConfig = document.getElementById('randomStringConfig');
+    const minLengthInput = document.getElementById('minLengthInput');
+    const maxLengthInput = document.getElementById('maxLengthInput');
+    const refreshPreviewBtn = document.getElementById('refreshPreviewBtn');
+
+    if (!modeRadios.length || !randomStringConfig) return;
+
+    // 模式切换事件
+    modeRadios.forEach(radio => {
+      radio.addEventListener('change', () => {
+        if (radio.value === 'randomString' && radio.checked) {
+          randomStringConfig.style.display = 'block';
+          this.updateRandomStringPreview();
+        } else {
+          randomStringConfig.style.display = 'none';
+        }
+        this.saveSettings();
+      });
+    });
+
+    // 长度输入验证和联动
+    if (minLengthInput) {
+      minLengthInput.addEventListener('input', () => {
+        const minVal = parseInt(minLengthInput.value);
+        const maxVal = parseInt(maxLengthInput ? maxLengthInput.value : '15');
+
+        if (minVal > maxVal && maxLengthInput) {
+          maxLengthInput.value = minVal;
+        }
+
+        this.updateRandomStringPreview();
+        this.saveSettings();
+      });
+    }
+
+    if (maxLengthInput) {
+      maxLengthInput.addEventListener('input', () => {
+        const minVal = parseInt(minLengthInput ? minLengthInput.value : '6');
+        const maxVal = parseInt(maxLengthInput.value);
+
+        if (maxVal < minVal && minLengthInput) {
+          minLengthInput.value = maxVal;
+        }
+
+        this.updateRandomStringPreview();
+        this.saveSettings();
+      });
+    }
+
+    // 刷新预览按钮
+    if (refreshPreviewBtn) {
+      refreshPreviewBtn.addEventListener('click', () => {
+        this.updateRandomStringPreview();
+      });
+    }
+  }
+
+  // 更新随机字符串预览
+  updateRandomStringPreview() {
+    const minLengthInput = document.getElementById('minLengthInput');
+    const maxLengthInput = document.getElementById('maxLengthInput');
+    const previewElement = document.getElementById('randomStringPreview');
+
+    if (!previewElement) return;
+
+    const minLength = parseInt(minLengthInput ? minLengthInput.value : '6') || 6;
+    const maxLength = parseInt(maxLengthInput ? maxLengthInput.value : '15') || 15;
+
+    const previewString = this.generateRandomStringPreview(minLength, maxLength);
+    previewElement.textContent = `${previewString}@example.com`;
+  }
+
+  // 生成预览用的随机字符串
+  generateRandomStringPreview(minLength, maxLength) {
+    const length = Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength;
+    const chars = {
+      numbers: '0123456789',
+      letters: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    };
+
+    // 确保包含数字和字母
+    let result = [
+      chars.numbers.charAt(Math.floor(Math.random() * chars.numbers.length)),
+      chars.letters.charAt(Math.floor(Math.random() * chars.letters.length))
+    ];
+
+    // 填充剩余位置
+    const allChars = chars.numbers + chars.letters;
+    for (let i = 2; i < length; i++) {
+      result.push(allChars.charAt(Math.floor(Math.random() * allChars.length)));
+    }
+
+    // 随机打乱
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [result[i], result[j]] = [result[j], result[i]];
+    }
+
+    return result.join('');
   }
 }
 

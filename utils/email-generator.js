@@ -26,6 +26,7 @@ class EmailGenerator {
       }
 
       const emailConfig = await this.storageManager.getConfig('emailConfig');
+      const mode = emailConfig.generationMode || 'nameNumber';
       
       // 写死的姓氏和名字列表（各100个）
       const firstNames = [
@@ -54,15 +55,18 @@ class EmailGenerator {
         "foster", "gonzales", "bryant", "alexander", "russell", "griffin", "diaz", "hayes", "myers", "ford"
       ];
 
-      // 随机选择姓名
-      const firstName = this.randomChoice(firstNames);
-      const lastName = this.randomChoice(lastNames);
-
-      // 生成随机6位数字
-      const randomNum = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-
-      // 组合用户名：姓氏+名字+6位数字
-      const username = `${firstName}${lastName}${randomNum}`;
+      let username;
+      if (mode === 'randomString') {
+        // 随机字符串模式
+        const config = emailConfig.randomStringConfig || { minLength: 6, maxLength: 15 };
+        username = this.generateRandomString(config.minLength, config.maxLength);
+      } else {
+        // 姓名+数字模式（默认）
+        const firstName = this.randomChoice(firstNames);
+        const lastName = this.randomChoice(lastNames);
+        const randomNum = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+        username = `${firstName}${lastName}${randomNum}`;
+      }
 
       // 解析域名列表
       const domainsStr = emailConfig.domains || "";
@@ -227,6 +231,61 @@ class EmailGenerator {
   // 工具方法：格式化时间戳
   formatTimestamp(timestamp) {
     return new Date(timestamp).toLocaleString('zh-CN');
+  }
+
+  // 生成随机字符串
+  generateRandomString(minLength, maxLength) {
+    const length = Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength;
+    const chars = {
+      numbers: '0123456789',
+      lowercase: 'abcdefghijklmnopqrstuvwxyz',
+      uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    };
+
+    // 确保包含数字和字母
+    let result = [
+      this.getRandomChar(chars.numbers),
+      this.getRandomChar(chars.lowercase + chars.uppercase)
+    ];
+
+    // 填充剩余位置
+    const allChars = chars.numbers + chars.lowercase + chars.uppercase;
+    for (let i = 2; i < length; i++) {
+      result.push(this.getRandomChar(allChars));
+    }
+
+    // 随机打乱并验证
+    const shuffled = this.shuffleArray(result).join('');
+
+    // 验证是否同时包含数字和字母
+    if (this.validateRandomString(shuffled)) {
+      return shuffled;
+    } else {
+      // 递归重新生成
+      return this.generateRandomString(minLength, maxLength);
+    }
+  }
+
+  // 获取随机字符
+  getRandomChar(charSet) {
+    return charSet.charAt(Math.floor(Math.random() * charSet.length));
+  }
+
+  // 随机打乱数组
+  shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
+  // 验证随机字符串
+  validateRandomString(str) {
+    const hasNumber = /\d/.test(str);
+    const hasLetter = /[a-zA-Z]/.test(str);
+    return hasNumber && hasLetter;
   }
 }
 

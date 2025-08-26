@@ -3534,4 +3534,128 @@ body {
     }
 }
 
+/* 邮箱生成方式配置样式 */
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid #e1e5e9;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.radio-option:hover {
+    background: #f8f9fa;
+    border-color: #667eea;
+}
+
+.radio-option input[type="radio"] {
+    flex-shrink: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+    display: inline-block;
+    width: auto;
+    height: auto;
+}
+
+.radio-text {
+    font-weight: 500;
+    margin: 0;
+}
+
+.radio-example {
+    color: #6c757d;
+    font-size: 12px;
+}
+
+.sub-config {
+    margin-left: 24px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 3px solid #667eea;
+    margin-bottom: 8px;
+}
+
+.config-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 8px;
+}
+
+.config-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.config-item label {
+    font-size: 13px;
+    color: #495057;
+    white-space: nowrap;
+}
+
+.length-input {
+    width: 80px;
+    padding: 4px 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.config-help {
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 8px;
+}
+
+.config-preview {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: white;
+    border-radius: 4px;
+}
+
+.preview-label {
+    font-size: 12px;
+    color: #495057;
+    font-weight: 500;
+}
+
+.preview-text {
+    font-family: monospace;
+    color: #495057;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.btn-mini {
+    padding: 2px 6px;
+    font-size: 12px;
+    border: 1px solid #ced4da;
+    background: white;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-mini:hover {
+    background: #f8f9fa;
+    border-color: #667eea;
+}
+
 

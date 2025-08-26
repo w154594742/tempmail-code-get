@@ -1457,7 +1457,9 @@ class BackgroundService {
       const settings = {
         domains: emailConfig.domains || '',
         targetEmail: emailConfig.targetEmail || '',
-        pinCode: tempMailConfig.epin || ''
+        pinCode: tempMailConfig.epin || '',
+        generationMode: emailConfig.generationMode || 'nameNumber',
+        randomStringConfig: emailConfig.randomStringConfig || { minLength: 6, maxLength: 15 }
       };
 
       console.log('handleGetSettings - emailConfig:', emailConfig);
@@ -1488,7 +1490,9 @@ class BackgroundService {
       const updatedEmailConfig = {
         ...emailConfig,
         domains: settings.domains || '',
-        targetEmail: settings.targetEmail || ''
+        targetEmail: settings.targetEmail || '',
+        generationMode: settings.generationMode || 'nameNumber',
+        randomStringConfig: settings.randomStringConfig || { minLength: 6, maxLength: 15 }
       };
 
       // 更新临时邮箱配置

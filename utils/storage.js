@@ -5,7 +5,12 @@ class StorageManager {
       emailConfig: {
         domains: "demoan1.com,demoan2.com,demoan3.com",
         targetEmail: "abcd123@mailto.plus",
-        currentDomainIndex: 0
+        currentDomainIndex: 0,
+        generationMode: "nameNumber",
+        randomStringConfig: {
+          minLength: 6,
+          maxLength: 15
+        }
       },
       tempMailConfig: {
         epin: ""
