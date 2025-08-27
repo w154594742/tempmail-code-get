@@ -450,6 +450,18 @@ body {
     flex: none;
 }
 
+/* 邮箱历史的主要内容区域 */
+.email-history-manager .form-group:last-child {
+    height: 100%;
+    flex: 1;
+}
+
+/* 邮箱历史搜索区域不占据全部高度 */
+.email-history-manager .form-group:first-child {
+    height: auto;
+    flex: none;
+}
+
 /* 搜索容器样式 */
 .search-container {
     margin-bottom: 15px;
