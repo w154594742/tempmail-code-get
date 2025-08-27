@@ -1305,16 +1305,54 @@ body {
     color: #f44336;
 }
 
-/* 日志区域 */
-.logs-section {
-    margin-top: 25px;
+/* 首页布局 */
+#homePage {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 30px); /* 减去 main-content 的上下 padding */
 }
 
+/* 首页各个section的flex设置 */
+#homePage .quick-email-section {
+    flex: none; /* 不伸缩，保持内容高度 */
+}
+
+#homePage .status-section {
+    flex: none; /* 不伸缩，保持内容高度 */
+}
+
+#homePage .logs-section {
+    flex: 1; /* 占据剩余所有空间 */
+    display: flex;
+    flex-direction: column;
+    margin-top: 12px; /* 从25px减少到12px */
+    min-height: 0; /* 允许flex子项收缩 */
+}
+
+/* 压缩首页空白区域 */
+#homePage .quick-email-section {
+    margin-bottom: 12px; /* 从25px减少到12px */
+}
+
+#homePage .email-quick-card,
+#homePage .code-quick-card,
+#homePage .flow-control-card,
+#homePage .element-picker-card {
+    padding: 6px;        /* 从10px减少到6px */
+    margin-bottom: 6px;  /* 从12px减少到6px */
+}
+
+#homePage .card-header {
+    margin-bottom: 6px;  /* 从12px减少到6px */
+}
+
+/* 日志区域 */
 .logs-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12px;
+    flex: none; /* 不伸缩，保持固定高度 */
 }
 
 .logs-header h3 {
@@ -1349,14 +1387,17 @@ body {
     background: #1e1e1e;
     border: 1px solid #333;
     border-radius: 4px;
-    height: 200px;
+    flex: 1; /* 占据剩余空间，替代固定高度 */
     overflow: hidden;
     font-family: 'Courier New', monospace;
+    min-height: 200px; /* 设置最小高度，确保基本可用性 */
 }
 
 .logs-container.collapsed {
+    flex: none; /* 收起时不占据空间 */
     height: 0;
     border: none;
+    min-height: 0;
 }
 
 .logs-content {
