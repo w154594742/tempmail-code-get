@@ -141,9 +141,24 @@ class ApiManager {
   // 从邮件文本中提取验证码
   extractVerificationCode(mailText) {
     try {
-      // 匹配6位数字验证码
-      const codeMatch = mailText.match(/(?<![a-zA-Z@.])\b\d{6}\b/);
-      return codeMatch ? codeMatch[0] : null;
+      // 按优先级顺序尝试匹配验证码
+      const patterns = [
+        /(?<![a-zA-Z@.])\b\d{6}\b/,     // 6位数字（原有，最高优先级）
+        /(?<![a-zA-Z@.])\b\d{7,8}\b/,   // 7-8位数字（第二优先级）
+        /(?<![a-zA-Z@.])\b\d{4,5}\b/    // 4-5位数字（第三优先级）
+      ];
+
+      // 依次尝试每个模式，找到第一个匹配的验证码
+      for (const pattern of patterns) {
+        const match = mailText.match(pattern);
+        if (match) {
+          console.log(`验证码提取成功，使用模式: ${pattern}, 结果: ${match[0]}`);
+          return match[0];
+        }
+      }
+
+      console.log('未找到匹配的验证码');
+      return null;
     } catch (error) {
       console.error('提取验证码失败:', error);
       return null;
