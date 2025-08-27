@@ -10,6 +10,10 @@ class StorageManager {
         randomStringConfig: {
           minLength: 6,
           maxLength: 15
+        },
+        regexPatternConfig: {
+          pattern: "[a-z]{3,8}\\d{2,4}",
+          maxLength: 20
         }
       },
       tempMailConfig: {

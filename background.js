@@ -1459,7 +1459,8 @@ class BackgroundService {
         targetEmail: emailConfig.targetEmail || '',
         pinCode: tempMailConfig.epin || '',
         generationMode: emailConfig.generationMode || 'nameNumber',
-        randomStringConfig: emailConfig.randomStringConfig || { minLength: 6, maxLength: 15 }
+        randomStringConfig: emailConfig.randomStringConfig || { minLength: 6, maxLength: 15 },
+        regexPatternConfig: emailConfig.regexPatternConfig || { pattern: '[a-z]{3,8}\\d{2,4}', maxLength: 20 }
       };
 
       console.log('handleGetSettings - emailConfig:', emailConfig);
@@ -1492,7 +1493,8 @@ class BackgroundService {
         domains: settings.domains || '',
         targetEmail: settings.targetEmail || '',
         generationMode: settings.generationMode || 'nameNumber',
-        randomStringConfig: settings.randomStringConfig || { minLength: 6, maxLength: 15 }
+        randomStringConfig: settings.randomStringConfig || { minLength: 6, maxLength: 15 },
+        regexPatternConfig: settings.regexPatternConfig || { pattern: '[a-z]{3,8}\\d{2,4}', maxLength: 20 }
       };
 
       // 更新临时邮箱配置

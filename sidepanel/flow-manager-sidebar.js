@@ -2490,10 +2490,19 @@ class SidebarFlowManager {
         if (modeRadio) {
           modeRadio.checked = true;
 
-          // 显示/隐藏随机字符串配置
+          // 显示/隐藏配置区域
           const randomStringConfig = document.getElementById('randomStringConfig');
+          const regexPatternConfig = document.getElementById('regexPatternConfig');
+
           if (mode === 'randomString') {
             randomStringConfig.style.display = 'block';
+            regexPatternConfig.style.display = 'none';
+          } else if (mode === 'regexPattern') {
+            randomStringConfig.style.display = 'none';
+            regexPatternConfig.style.display = 'block';
+          } else {
+            randomStringConfig.style.display = 'none';
+            regexPatternConfig.style.display = 'none';
           }
         }
 
@@ -2504,8 +2513,14 @@ class SidebarFlowManager {
         if (minLengthInput) minLengthInput.value = randomConfig.minLength;
         if (maxLengthInput) maxLengthInput.value = randomConfig.maxLength;
 
+        // 加载正则模式配置
+        const regexConfig = settings.regexPatternConfig || { pattern: "[a-z]{3,8}\\d{2,4}", maxLength: 20 };
+        const regexPatternInput = document.getElementById('regexPatternInput');
+        if (regexPatternInput) regexPatternInput.value = regexConfig.pattern;
+
         // 更新预览
         this.updateRandomStringPreview();
+        this.updateRegexPreview();
 
         // 绑定邮箱生成模式事件
         this.bindEmailGenerationModeEvents();
@@ -2572,6 +2587,7 @@ class SidebarFlowManager {
       const selectedMode = document.querySelector('input[name="emailGenerationMode"]:checked');
       const minLengthInput = document.getElementById('minLengthInput');
       const maxLengthInput = document.getElementById('maxLengthInput');
+      const regexPatternInput = document.getElementById('regexPatternInput');
 
       const settings = {
         domains: domainsInput ? domainsInput.value.trim() : '',
@@ -2581,6 +2597,10 @@ class SidebarFlowManager {
         randomStringConfig: {
           minLength: parseInt(minLengthInput ? minLengthInput.value : '6') || 6,
           maxLength: parseInt(maxLengthInput ? maxLengthInput.value : '15') || 15
+        },
+        regexPatternConfig: {
+          pattern: regexPatternInput ? regexPatternInput.value.trim() : '[a-z]{3,8}\\d{2,4}',
+          maxLength: 20
         }
       };
 
@@ -3511,20 +3531,29 @@ class SidebarFlowManager {
   bindEmailGenerationModeEvents() {
     const modeRadios = document.querySelectorAll('input[name="emailGenerationMode"]');
     const randomStringConfig = document.getElementById('randomStringConfig');
+    const regexPatternConfig = document.getElementById('regexPatternConfig');
     const minLengthInput = document.getElementById('minLengthInput');
     const maxLengthInput = document.getElementById('maxLengthInput');
     const refreshPreviewBtn = document.getElementById('refreshPreviewBtn');
 
-    if (!modeRadios.length || !randomStringConfig) return;
+    if (!modeRadios.length) return;
 
     // 模式切换事件
     modeRadios.forEach(radio => {
       radio.addEventListener('change', () => {
-        if (radio.value === 'randomString' && radio.checked) {
-          randomStringConfig.style.display = 'block';
-          this.updateRandomStringPreview();
-        } else {
-          randomStringConfig.style.display = 'none';
+        if (radio.checked) {
+          // 隐藏所有配置区域
+          if (randomStringConfig) randomStringConfig.style.display = 'none';
+          if (regexPatternConfig) regexPatternConfig.style.display = 'none';
+
+          // 显示对应的配置区域
+          if (radio.value === 'randomString' && randomStringConfig) {
+            randomStringConfig.style.display = 'block';
+            this.updateRandomStringPreview();
+          } else if (radio.value === 'regexPattern' && regexPatternConfig) {
+            regexPatternConfig.style.display = 'block';
+            this.updateRegexPreview();
+          }
         }
         this.saveSettings();
       });
@@ -3563,6 +3592,37 @@ class SidebarFlowManager {
     if (refreshPreviewBtn) {
       refreshPreviewBtn.addEventListener('click', () => {
         this.updateRandomStringPreview();
+      });
+    }
+
+    // 正则模式相关事件
+    const regexPatternInput = document.getElementById('regexPatternInput');
+    const presetPatternSelect = document.getElementById('presetPatternSelect');
+    const refreshRegexPreviewBtn = document.getElementById('refreshRegexPreviewBtn');
+
+    // 正则表达式输入事件
+    if (regexPatternInput) {
+      regexPatternInput.addEventListener('input', () => {
+        this.validateAndUpdateRegexPreview();
+        this.saveSettings();
+      });
+    }
+
+    // 预设模式选择事件
+    if (presetPatternSelect) {
+      presetPatternSelect.addEventListener('change', () => {
+        if (presetPatternSelect.value && regexPatternInput) {
+          regexPatternInput.value = presetPatternSelect.value;
+          this.validateAndUpdateRegexPreview();
+          this.saveSettings();
+        }
+      });
+    }
+
+    // 刷新正则预览按钮
+    if (refreshRegexPreviewBtn) {
+      refreshRegexPreviewBtn.addEventListener('click', () => {
+        this.updateRegexPreview();
       });
     }
   }
@@ -3609,6 +3669,99 @@ class SidebarFlowManager {
     }
 
     return result.join('');
+  }
+
+  // 更新正则表达式预览
+  updateRegexPreview() {
+    const regexPatternInput = document.getElementById('regexPatternInput');
+    const previewElement = document.getElementById('regexPreview');
+
+    if (!previewElement || !regexPatternInput) return;
+
+    const pattern = regexPatternInput.value.trim();
+    if (!pattern) {
+      previewElement.textContent = 'abc123@example.com';
+      return;
+    }
+
+    try {
+      // 确保RegexGenerator类可用
+      if (typeof RegexGenerator === 'undefined') {
+        previewElement.textContent = 'RegexGenerator未加载@example.com';
+        return;
+      }
+
+      const generator = new RegexGenerator(pattern, 20);
+      const previewString = generator.generate();
+      previewElement.textContent = `${previewString}@example.com`;
+    } catch (error) {
+      console.error('正则预览生成失败:', error);
+      previewElement.textContent = 'error@example.com';
+    }
+  }
+
+  // 验证正则表达式并更新预览
+  validateAndUpdateRegexPreview() {
+    const regexPatternInput = document.getElementById('regexPatternInput');
+    const validationElement = document.getElementById('regexValidation');
+    const validationIcon = validationElement?.querySelector('.validation-icon');
+    const validationText = validationElement?.querySelector('.validation-text');
+
+    if (!regexPatternInput || !validationElement) return;
+
+    const pattern = regexPatternInput.value.trim();
+
+    if (!pattern) {
+      validationElement.style.display = 'none';
+      this.updateRegexPreview();
+      return;
+    }
+
+    try {
+      // 确保RegexGenerator类可用
+      if (typeof RegexGenerator === 'undefined') {
+        this.showRegexValidationError('RegexGenerator类未加载');
+        return;
+      }
+
+      const generator = new RegexGenerator(pattern, 20);
+      const validation = generator.validatePattern(pattern);
+
+      if (validation.valid) {
+        // 验证成功
+        validationElement.className = 'validation-message success';
+        validationElement.style.display = 'flex';
+        if (validationIcon) validationIcon.textContent = '✅';
+        if (validationText) validationText.textContent = '正则表达式语法正确';
+
+        this.updateRegexPreview();
+      } else {
+        // 验证失败
+        this.showRegexValidationError(validation.error || '正则表达式语法错误');
+      }
+    } catch (error) {
+      console.error('正则验证失败:', error);
+      this.showRegexValidationError('验证过程出错: ' + error.message);
+    }
+  }
+
+  // 显示正则验证错误
+  showRegexValidationError(errorMessage) {
+    const validationElement = document.getElementById('regexValidation');
+    const validationIcon = validationElement?.querySelector('.validation-icon');
+    const validationText = validationElement?.querySelector('.validation-text');
+    const previewElement = document.getElementById('regexPreview');
+
+    if (validationElement) {
+      validationElement.className = 'validation-message';
+      validationElement.style.display = 'flex';
+      if (validationIcon) validationIcon.textContent = '❌';
+      if (validationText) validationText.textContent = errorMessage;
+    }
+
+    if (previewElement) {
+      previewElement.textContent = 'error@example.com';
+    }
   }
 }
 

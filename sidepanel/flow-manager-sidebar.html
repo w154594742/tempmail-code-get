@@ -286,6 +286,11 @@
                                     <span class="radio-text">随机字符</span>
                                     <span class="radio-example">(Kj8mP2nQ9@domain.com)</span>
                                 </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="emailGenerationMode" value="regexPattern">
+                                    <span class="radio-text">正则模式</span>
+                                    <span class="radio-example">(根据正则表达式生成)</span>
+                                </label>
                             </div>
 
                             <!-- 随机字符配置区域 -->
@@ -307,6 +312,50 @@
                                     <span class="preview-label">预览示例:</span>
                                     <span id="randomStringPreview" class="preview-text">Kj8mP2nQ9@example.com</span>
                                     <button type="button" id="refreshPreviewBtn" class="btn-mini">🔄</button>
+                                </div>
+                            </div>
+
+                            <!-- 正则表达式配置区域 -->
+                            <div id="regexPatternConfig" class="sub-config" style="display: none;">
+                                <div class="config-row">
+                                    <div class="config-item">
+                                        <label for="regexPatternInput">正则表达式:</label>
+                                        <input type="text" id="regexPatternInput"
+                                               placeholder="例如: [a-z]{3,8}\d{2,4}"
+                                               class="regex-input">
+                                    </div>
+                                </div>
+
+                                <!-- 常用模式快速选择 -->
+                                <div class="config-row">
+                                    <div class="config-item">
+                                        <label for="presetPatternSelect">常用模式:</label>
+                                        <select id="presetPatternSelect" class="preset-select">
+                                            <option value="">选择预设模式...</option>
+                                            <option value="[a-z]{3,5}\d{2,3}">简短字母+数字</option>
+                                            <option value="[a-z]{6,10}\d{3,5}">长字母+数字</option>
+                                            <option value="[a-zA-Z]{4,8}\d{2,4}">混合大小写+数字</option>
+                                            <option value="\w{5,10}\d{2,4}">单词字符+数字</option>
+                                            <option value="[a-z]{8,12}">纯字母</option>
+                                            <option value="\d{8,12}">纯数字</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="config-help">
+                                    支持语法：[a-z] [A-Z] [0-9] {n} {n,m} + * ? \d \w
+                                </div>
+
+                                <div class="config-preview">
+                                    <span class="preview-label">预览示例:</span>
+                                    <span id="regexPreview" class="preview-text">abc123@example.com</span>
+                                    <button type="button" id="refreshRegexPreviewBtn" class="btn-mini">🔄</button>
+                                </div>
+
+                                <!-- 验证状态 -->
+                                <div id="regexValidation" class="validation-message" style="display: none;">
+                                    <span class="validation-icon">❌</span>
+                                    <span class="validation-text">正则表达式语法错误</span>
                                 </div>
                             </div>
 
@@ -765,6 +814,7 @@
         </div>
     </div>
 
+    <script src="../utils/regex-generator.js"></script>
     <script src="flow-manager-sidebar.js"></script>
 </body>
 

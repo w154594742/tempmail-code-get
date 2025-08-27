@@ -3658,4 +3658,52 @@ body {
     border-color: #667eea;
 }
 
+/* 正则表达式配置样式 */
+.regex-input {
+    width: 200px;
+    padding: 4px 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: monospace;
+}
+
+.preset-select {
+    width: 200px;
+    padding: 4px 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.validation-message {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: #fff5f5;
+    border: 1px solid #fed7d7;
+    border-radius: 4px;
+    margin-top: 8px;
+}
+
+.validation-message.success {
+    background: #f0fff4;
+    border-color: #9ae6b4;
+}
+
+.validation-message.success .validation-icon {
+    color: #38a169;
+}
+
+.validation-icon {
+    font-size: 14px;
+    color: #e53e3e;
+}
+
+.validation-text {
+    font-size: 12px;
+    color: #2d3748;
+}
+
 

@@ -56,7 +56,11 @@ class EmailGenerator {
       ];
 
       let username;
-      if (mode === 'randomString') {
+      if (mode === 'regexPattern') {
+        // 正则模式
+        const config = emailConfig.regexPatternConfig || { pattern: "[a-z]{3,8}\\d{2,4}", maxLength: 20 };
+        username = this.generateFromRegex(config.pattern, config.maxLength);
+      } else if (mode === 'randomString') {
         // 随机字符串模式
         const config = emailConfig.randomStringConfig || { minLength: 6, maxLength: 15 };
         username = this.generateRandomString(config.minLength, config.maxLength);
@@ -286,6 +290,53 @@ class EmailGenerator {
     const hasNumber = /\d/.test(str);
     const hasLetter = /[a-zA-Z]/.test(str);
     return hasNumber && hasLetter;
+  }
+
+  // 根据正则表达式生成字符串
+  generateFromRegex(pattern, maxLength = 20) {
+    try {
+      // 确保RegexGenerator类可用
+      if (typeof RegexGenerator === 'undefined') {
+        console.error('RegexGenerator类未加载，使用回退方案');
+        return this.getRegexFallback();
+      }
+
+      const generator = new RegexGenerator(pattern, maxLength);
+      const result = generator.generate();
+
+      // 验证生成的结果
+      if (!result || result.length === 0) {
+        console.warn('正则生成结果为空，使用回退方案');
+        return this.getRegexFallback();
+      }
+
+      return result;
+    } catch (error) {
+      console.error('正则生成失败:', error);
+      return this.getRegexFallback();
+    }
+  }
+
+  // 正则生成失败时的回退方案
+  getRegexFallback() {
+    // 使用简单的字母+数字组合作为回退
+    const letters = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+
+    let result = '';
+    // 3-6个字母
+    const letterCount = Math.floor(Math.random() * 4) + 3;
+    for (let i = 0; i < letterCount; i++) {
+      result += letters.charAt(Math.floor(Math.random() * letters.length));
+    }
+
+    // 2-4个数字
+    const numberCount = Math.floor(Math.random() * 3) + 2;
+    for (let i = 0; i < numberCount; i++) {
+      result += numbers.charAt(Math.floor(Math.random() * numbers.length));
+    }
+
+    return result;
   }
 }
 
