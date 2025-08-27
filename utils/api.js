@@ -138,6 +138,27 @@ class ApiManager {
     }
   }
 
+  // 解析邮件日期（RFC 2822格式）
+  parseMailDate(dateString) {
+    try {
+      if (!dateString) return null;
+
+      // RFC 2822 格式可以直接被 Date 构造函数解析
+      const date = new Date(dateString);
+
+      // 验证日期是否有效
+      if (isNaN(date.getTime())) {
+        console.warn('无效的邮件日期格式:', dateString);
+        return null;
+      }
+
+      return date.getTime(); // 返回时间戳
+    } catch (error) {
+      console.error('解析邮件日期失败:', error);
+      return null;
+    }
+  }
+
   // 从邮件文本中提取验证码
   extractVerificationCode(mailText) {
     try {
@@ -372,11 +393,15 @@ class ApiManager {
       const mailText = mailDetailData.text || "";
       const mailHtml = mailDetailData.html || "";
       const mailSubject = mailDetailData.subject || "";
+      const mailDate = this.parseMailDate(mailDetailData.date);
+      const originalDateString = mailDetailData.date || "";
+      const messageId = mailDetailData.message_id || "";
 
       console.log('找到邮件主题:', mailSubject);
       console.log('邮件原始数据:', JSON.stringify(mailDetailData, null, 2));
       console.log('邮件文本内容:', mailText);
       console.log('邮件HTML内容:', mailHtml);
+      console.log('邮件原始时间:', originalDateString, '-> 时间戳:', mailDate);
 
       // 记录邮件内容到历史（无论是否提取到验证码）
       if (this.storageManager) {
@@ -389,7 +414,10 @@ class ApiManager {
               subject: mailSubject,
               text: mailText,
               html: mailHtml,
-              mailId: firstId
+              mailId: firstId,
+              originalDate: mailDate,
+              originalDateString: originalDateString,
+              messageId: messageId
             },
             null // 验证码稍后在成功提取后更新
           );
@@ -509,21 +537,32 @@ class ApiManager {
         const code = await this.getLatestMailCode(openLinksOnFailure, sourceEmail);
 
         if (code && typeof code === 'object' && code.type === 'LINKS_OPENED') {
-          // 链接已打开，停止重试
+          // 链接已打开，记录信息但继续重试
           if (onProgress) {
             const linksList = code.links.join(', ');
             onProgress({
               attempt: attempt + 1,
               maxRetries: maxRetries,
-              message: `已打开 ${code.count} 个链接: ${linksList}`,
-              success: false,
+              message: `已打开 ${code.count} 个链接: ${linksList}，继续尝试获取验证码...`,
               linksOpened: true,
               links: code.links
             });
           }
 
-          // 抛出特殊错误，表示已处理链接
-          throw new Error(`邮件中未找到验证码，但已打开 ${code.count} 个相关链接`);
+          // 继续下一次循环，不抛出错误
+          // 注意：getLatestMailCode 已经处理了保存数据和删除邮件
+          if (attempt < maxRetries - 1) {
+            if (onProgress) {
+              onProgress({
+                attempt: attempt + 1,
+                maxRetries: maxRetries,
+                message: `${retryInterval/1000}秒后继续重试...`,
+                waiting: true
+              });
+            }
+            await this.sleepWithAbort(retryInterval, abortSignal);
+          }
+          continue;
         }
 
         if (code && typeof code === 'object' && code.type === 'MAIL_CONTENT_DISPLAYED') {
@@ -591,11 +630,7 @@ class ApiManager {
           throw error;
         }
 
-        // 如果是链接已处理错误，直接抛出，不继续重试
-        if (error.message && error.message.includes('邮件中未找到验证码，但已打开') && error.message.includes('个相关链接')) {
-          console.log('检测到链接已处理错误，停止重试');
-          throw error;
-        }
+        // 移除链接已处理错误的特殊处理，让所有错误都能正常重试
 
         // 如果是邮件内容已显示错误，直接抛出，不继续重试
         if (error.message && error.message.includes('邮件中未找到验证码和链接，已显示邮件原始内容')) {

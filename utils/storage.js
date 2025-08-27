@@ -217,7 +217,10 @@ class StorageManager {
           subject: mailContent.subject || "",
           text: mailContent.text || "",
           html: mailContent.html || "",
-          mailId: mailContent.mailId || ""
+          mailId: mailContent.mailId || "",
+          originalDate: mailContent.originalDate || null,           // 邮件原始时间戳
+          originalDateString: mailContent.originalDateString || "", // 原始日期字符串
+          messageId: mailContent.messageId || ""                    // 邮件消息ID
         },
         timestamp: Date.now(),
         verificationCode: verificationCode,

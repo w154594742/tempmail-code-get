@@ -2068,9 +2068,16 @@ class SidebarFlowManager {
       return;
     }
 
+    // 按时间排序：优先使用邮件原始时间，降级到保存时间
+    const sortedHistory = history.sort((a, b) => {
+      const timeA = a.mailContent.originalDate || a.timestamp;
+      const timeB = b.mailContent.originalDate || b.timestamp;
+      return timeB - timeA; // 降序排列，最新的在前
+    });
+
     clearAllBtn.style.display = 'inline-block';
 
-    container.innerHTML = history.slice(0, 50).map(item => {
+    container.innerHTML = sortedHistory.slice(0, 50).map(item => {
       // 确保向后兼容：为旧数据提供默认值
       const isFavorite = item.isFavorite || false;
       const note = item.note || '';
@@ -2099,7 +2106,7 @@ class SidebarFlowManager {
               </div>
               <div class="mail-meta-item">
                 <span class="mail-meta-label">🕒 时间:</span>
-                <span class="mail-meta-value">${new Date(item.timestamp).toLocaleString()}</span>
+                <span class="mail-meta-value">${new Date(item.mailContent.originalDate || item.timestamp).toLocaleString()}</span>
               </div>
               ${item.verificationCode ? `
                 <div class="mail-meta-item">
@@ -2196,7 +2203,7 @@ class SidebarFlowManager {
       <div class="mail-detail-header">
         <h4>📋 邮件主题: ${mailItem.mailContent.subject || '(无主题)'}</h4>
         <p><strong>📧 源邮箱:</strong> ${mailItem.sourceEmail}</p>
-        <p><strong>🕒 时间:</strong> ${new Date(mailItem.timestamp).toLocaleString()}</p>
+        <p><strong>🕒 时间:</strong> ${new Date(mailItem.mailContent.originalDate || mailItem.timestamp).toLocaleString()}</p>
         ${mailItem.verificationCode ? `<p><strong>🔢 验证码:</strong> <span class="modal-verification-code">${mailItem.verificationCode}</span></p>` : ''}
       </div>
       <div class="mail-detail-body">
@@ -3455,8 +3462,14 @@ class SidebarFlowManager {
       });
 
       if (response.success) {
-        this.renderMailContentHistory(response.results);
-        this.updateMailContentSearchInfo(keyword, response.results.length);
+        // 对搜索结果也进行排序
+        const sortedResults = response.results.sort((a, b) => {
+          const timeA = a.mailContent.originalDate || a.timestamp;
+          const timeB = b.mailContent.originalDate || b.timestamp;
+          return timeB - timeA; // 降序排列，最新的在前
+        });
+        this.renderMailContentHistory(sortedResults);
+        this.updateMailContentSearchInfo(keyword, sortedResults.length);
       } else {
         console.error('搜索邮件内容历史失败:', response.error);
         this.showNotification('搜索失败', 'error');
