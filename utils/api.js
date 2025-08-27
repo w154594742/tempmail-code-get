@@ -492,6 +492,14 @@ class ApiManager {
         } else {
           console.log('邮件HTML中未找到有效链接，显示邮件原始内容');
 
+          try {
+            // 删除邮件（与其他情况保持一致）
+            await this.deleteMail(firstId, email, epin);
+            console.log('已显示邮件内容并删除邮件');
+          } catch (deleteError) {
+            console.warn('删除邮件失败，但内容已显示:', deleteError);
+          }
+
           // 既没有验证码也没有链接，返回邮件内容供显示
           return {
             type: 'MAIL_CONTENT_DISPLAYED',
@@ -566,13 +574,12 @@ class ApiManager {
         }
 
         if (code && typeof code === 'object' && code.type === 'MAIL_CONTENT_DISPLAYED') {
-          // 显示邮件内容，停止重试
+          // 显示邮件内容，但继续重试
           if (onProgress) {
             onProgress({
               attempt: attempt + 1,
               maxRetries: maxRetries,
-              message: `未找到验证码和链接，显示邮件原始内容`,
-              success: false,
+              message: `未找到验证码和链接，已显示邮件内容，继续尝试获取验证码...`,
               mailContentDisplayed: true,
               mailContent: {
                 subject: code.subject,
@@ -583,8 +590,20 @@ class ApiManager {
             });
           }
 
-          // 抛出特殊错误，表示已显示邮件内容
-          throw new Error('邮件中未找到验证码和链接，已显示邮件原始内容');
+          // 继续下一次循环，不抛出错误
+          // 注意：getLatestMailCode 已经处理了邮件删除
+          if (attempt < maxRetries - 1) {
+            if (onProgress) {
+              onProgress({
+                attempt: attempt + 1,
+                maxRetries: maxRetries,
+                message: `${retryInterval/1000}秒后继续重试...`,
+                waiting: true
+              });
+            }
+            await this.sleepWithAbort(retryInterval, abortSignal);
+          }
+          continue;
         }
 
         if (code) {
