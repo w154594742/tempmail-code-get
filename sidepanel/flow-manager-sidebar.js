@@ -2491,18 +2491,26 @@ class SidebarFlowManager {
           modeRadio.checked = true;
 
           // 显示/隐藏配置区域
+          const nameNumberConfig = document.getElementById('nameNumberConfig');
           const randomStringConfig = document.getElementById('randomStringConfig');
           const regexPatternConfig = document.getElementById('regexPatternConfig');
 
-          if (mode === 'randomString') {
-            randomStringConfig.style.display = 'block';
-            regexPatternConfig.style.display = 'none';
+          if (mode === 'nameNumber') {
+            if (nameNumberConfig) nameNumberConfig.style.display = 'block';
+            if (randomStringConfig) randomStringConfig.style.display = 'none';
+            if (regexPatternConfig) regexPatternConfig.style.display = 'none';
+          } else if (mode === 'randomString') {
+            if (nameNumberConfig) nameNumberConfig.style.display = 'none';
+            if (randomStringConfig) randomStringConfig.style.display = 'block';
+            if (regexPatternConfig) regexPatternConfig.style.display = 'none';
           } else if (mode === 'regexPattern') {
-            randomStringConfig.style.display = 'none';
-            regexPatternConfig.style.display = 'block';
+            if (nameNumberConfig) nameNumberConfig.style.display = 'none';
+            if (randomStringConfig) randomStringConfig.style.display = 'none';
+            if (regexPatternConfig) regexPatternConfig.style.display = 'block';
           } else {
-            randomStringConfig.style.display = 'none';
-            regexPatternConfig.style.display = 'none';
+            if (nameNumberConfig) nameNumberConfig.style.display = 'none';
+            if (randomStringConfig) randomStringConfig.style.display = 'none';
+            if (regexPatternConfig) regexPatternConfig.style.display = 'none';
           }
         }
 
@@ -2519,6 +2527,7 @@ class SidebarFlowManager {
         if (regexPatternInput) regexPatternInput.value = regexConfig.pattern;
 
         // 更新预览
+        this.updateNameNumberPreview();
         this.updateRandomStringPreview();
         this.updateRegexPreview();
 
@@ -3530,6 +3539,7 @@ class SidebarFlowManager {
   // 绑定邮箱生成模式切换事件
   bindEmailGenerationModeEvents() {
     const modeRadios = document.querySelectorAll('input[name="emailGenerationMode"]');
+    const nameNumberConfig = document.getElementById('nameNumberConfig');
     const randomStringConfig = document.getElementById('randomStringConfig');
     const regexPatternConfig = document.getElementById('regexPatternConfig');
     const minLengthInput = document.getElementById('minLengthInput');
@@ -3543,11 +3553,15 @@ class SidebarFlowManager {
       radio.addEventListener('change', () => {
         if (radio.checked) {
           // 隐藏所有配置区域
+          if (nameNumberConfig) nameNumberConfig.style.display = 'none';
           if (randomStringConfig) randomStringConfig.style.display = 'none';
           if (regexPatternConfig) regexPatternConfig.style.display = 'none';
 
           // 显示对应的配置区域
-          if (radio.value === 'randomString' && randomStringConfig) {
+          if (radio.value === 'nameNumber' && nameNumberConfig) {
+            nameNumberConfig.style.display = 'block';
+            this.updateNameNumberPreview();
+          } else if (radio.value === 'randomString' && randomStringConfig) {
             randomStringConfig.style.display = 'block';
             this.updateRandomStringPreview();
           } else if (radio.value === 'regexPattern' && regexPatternConfig) {
@@ -3595,6 +3609,16 @@ class SidebarFlowManager {
       });
     }
 
+    // 姓名+数字模式相关事件
+    const refreshNameNumberPreviewBtn = document.getElementById('refreshNameNumberPreviewBtn');
+
+    // 刷新姓名+数字预览按钮
+    if (refreshNameNumberPreviewBtn) {
+      refreshNameNumberPreviewBtn.addEventListener('click', () => {
+        this.updateNameNumberPreview();
+      });
+    }
+
     // 正则模式相关事件
     const regexPatternInput = document.getElementById('regexPatternInput');
     const presetPatternSelect = document.getElementById('presetPatternSelect');
@@ -3624,6 +3648,42 @@ class SidebarFlowManager {
       refreshRegexPreviewBtn.addEventListener('click', () => {
         this.updateRegexPreview();
       });
+    }
+  }
+
+  // 更新姓名+数字预览
+  updateNameNumberPreview() {
+    const previewElement = document.getElementById('nameNumberPreview');
+
+    if (!previewElement) return;
+
+    try {
+      // 使用与邮箱生成器相同的姓名和数字生成逻辑
+      const firstNames = [
+        "linda", "john", "mary", "david", "sarah", "michael", "jennifer", "robert", "lisa", "james",
+        "patricia", "william", "elizabeth", "richard", "barbara", "joseph", "susan", "thomas", "jessica", "charles"
+      ];
+
+      const lastNames = [
+        "smith", "johnson", "williams", "brown", "jones", "garcia", "miller", "davis", "rodriguez", "martinez",
+        "hernandez", "lopez", "gonzalez", "wilson", "anderson", "thomas", "taylor", "moore", "jackson", "martin"
+      ];
+
+      // 随机选择姓名
+      const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+      const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+
+      // 生成6位随机数字
+      const randomNum = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+
+      // 组合用户名
+      const username = `${firstName}${lastName}${randomNum}`;
+
+      // 显示预览
+      previewElement.textContent = `${username}@example.com`;
+    } catch (error) {
+      console.error('姓名+数字预览生成失败:', error);
+      previewElement.textContent = 'johnsmith123456@example.com';
     }
   }
 
