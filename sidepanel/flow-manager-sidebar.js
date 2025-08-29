@@ -137,12 +137,14 @@ class SidebarFlowManager {
           const homeEmailInput = document.getElementById('homeEmailInput');
           if (homeEmailInput) {
             homeEmailInput.value = response.lastEmail;
+            homeEmailInput.title = '📋 点击复制邮箱地址'; // 添加提示
           }
         }
         if (response.lastCode) {
           const homeCodeInput = document.getElementById('homeCodeInput');
           if (homeCodeInput) {
             homeCodeInput.value = response.lastCode;
+            homeCodeInput.title = '📋 点击复制验证码'; // 添加提示
           }
         }
       }
@@ -1543,6 +1545,15 @@ class SidebarFlowManager {
       this.stopGettingCodeForHome();
     });
 
+    // 首页输入框点击复制功能
+    document.getElementById('homeEmailInput')?.addEventListener('click', () => {
+      this.copyHomeEmail();
+    });
+
+    document.getElementById('homeCodeInput')?.addEventListener('click', () => {
+      this.copyHomeCode();
+    });
+
 
 
     // 邮箱工具功能
@@ -2336,7 +2347,9 @@ class SidebarFlowManager {
       this.addLog('开始生成邮箱地址...', 'info');
       const response = await chrome.runtime.sendMessage({ action: 'generateEmail' });
       if (response.success) {
-        document.getElementById('homeEmailInput').value = response.email;
+        const emailInput = document.getElementById('homeEmailInput');
+        emailInput.value = response.email;
+        emailInput.title = '📋 点击复制邮箱地址'; // 添加提示
         this.addLog(`邮箱生成成功: ${response.email}`, 'success');
 
         // 自动复制到剪切板
@@ -2353,6 +2366,28 @@ class SidebarFlowManager {
     } catch (error) {
       this.showNotification('生成邮箱失败: ' + error.message, 'error');
       this.addLog('生成邮箱异常: ' + error.message, 'error');
+    }
+  }
+
+  // 首页复制邮箱
+  async copyHomeEmail() {
+    const emailInput = document.getElementById('homeEmailInput');
+    if (emailInput && emailInput.value && emailInput.value.trim() !== '') {
+      await this.copyToClipboard(emailInput.value, '邮箱地址已复制到剪切板', '复制邮箱地址失败');
+      this.addLog(`📋 复制邮箱地址: ${emailInput.value}`, 'info');
+    } else {
+      this.showNotification('请先生成邮箱地址', 'warning');
+    }
+  }
+
+  // 首页复制验证码
+  async copyHomeCode() {
+    const codeInput = document.getElementById('homeCodeInput');
+    if (codeInput && codeInput.value && codeInput.value.trim() !== '') {
+      await this.copyToClipboard(codeInput.value, '验证码已复制到剪切板', '复制验证码失败');
+      this.addLog(`📋 复制验证码: ${codeInput.value}`, 'info');
+    } else {
+      this.showNotification('请先获取验证码', 'warning');
     }
   }
 
@@ -2378,7 +2413,9 @@ class SidebarFlowManager {
       });
 
       if (response.success) {
-        document.getElementById('homeCodeInput').value = response.code;
+        const codeInput = document.getElementById('homeCodeInput');
+        codeInput.value = response.code;
+        codeInput.title = '📋 点击复制验证码'; // 添加提示
 
         // 自动复制到剪切板
         const copySuccess = await this.copyToClipboard(response.code, '验证码已获取并复制到剪切板', '验证码已获取，但复制失败');

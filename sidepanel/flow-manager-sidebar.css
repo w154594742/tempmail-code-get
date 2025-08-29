@@ -151,7 +151,26 @@ body {
     border-radius: 4px;
     font-size: 12px;
     background: #f9f9f9;
+    cursor: pointer; /* 添加手型指针提示可点击 */
+    transition: all 0.2s ease; /* 添加过渡动画 */
+    position: relative;
 }
+
+/* 为有内容的输入框添加悬停效果 */
+#homeEmailInput:not(:placeholder-shown):hover,
+#homeCodeInput:not(:placeholder-shown):hover {
+    background: #e8f4fd;
+    border-color: #4285f4;
+    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
+}
+
+/* 为输入框添加点击提示样式 */
+#homeEmailInput:not(:placeholder-shown),
+#homeCodeInput:not(:placeholder-shown) {
+    padding-right: 80px; /* 为提示文本留出空间 */
+}
+
+/* 使用title属性显示提示文本，更简单有效 */
 
 .email-display button,
 .code-display button,
