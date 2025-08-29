@@ -1459,6 +1459,8 @@ class BackgroundService {
         targetEmail: emailConfig.targetEmail || '',
         pinCode: tempMailConfig.epin || '',
         generationMode: emailConfig.generationMode || 'nameNumber',
+        domainSelectionMode: emailConfig.domainSelectionMode || 'random',
+        avoidRepeatCount: emailConfig.avoidRepeatCount || 3,
         randomStringConfig: emailConfig.randomStringConfig || { minLength: 6, maxLength: 15 },
         regexPatternConfig: emailConfig.regexPatternConfig || { pattern: '[a-z]{3,8}\\d{2,4}', maxLength: 20 }
       };
@@ -1493,6 +1495,11 @@ class BackgroundService {
         domains: settings.domains || '',
         targetEmail: settings.targetEmail || '',
         generationMode: settings.generationMode || 'nameNumber',
+        domainSelectionMode: settings.domainSelectionMode || 'random',
+        avoidRepeatCount: settings.avoidRepeatCount || 3,
+        // 保持现有历史数据
+        domainSelectionHistory: emailConfig.domainSelectionHistory || [],
+        currentDomainIndex: emailConfig.currentDomainIndex || 0,
         randomStringConfig: settings.randomStringConfig || { minLength: 6, maxLength: 15 },
         regexPatternConfig: settings.regexPatternConfig || { pattern: '[a-z]{3,8}\\d{2,4}', maxLength: 20 }
       };

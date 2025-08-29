@@ -373,6 +373,39 @@
                             <div class="form-help">选择邮箱用户名的生成方式</div>
                         </div>
 
+                        <!-- 域名选择策略配置 -->
+                        <div class="form-group">
+                            <label>域名选择策略:</label>
+                            <div class="radio-group">
+                                <label class="radio-option">
+                                    <input type="radio" name="domainSelectionMode" value="random" checked>
+                                    <span class="radio-text">完全随机</span>
+                                    <span class="radio-example">(每次随机选择)</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="domainSelectionMode" value="roundRobin">
+                                    <span class="radio-text">轮询均衡</span>
+                                    <span class="radio-example">(依次使用各域名)</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="domainSelectionMode" value="smart">
+                                    <span class="radio-text">智能选择</span>
+                                    <span class="radio-example">(避免短期重复)</span>
+                                </label>
+                            </div>
+
+                            <!-- 智能选择配置 -->
+                            <div id="smartSelectionConfig" class="sub-config" style="display: none;">
+                                <div class="config-row">
+                                    <div class="config-item">
+                                        <label for="avoidRepeatCountInput">避免重复次数:</label>
+                                        <input type="number" id="avoidRepeatCountInput" min="1" max="10" value="3" class="length-input">
+                                    </div>
+                                </div>
+                                <div class="config-help">避免在最近N次选择中重复使用同一域名</div>
+                            </div>
+                        </div>
+
                         <!-- 数据管理按钮 -->
                         <div class="form-group">
                             <div class="button-group">

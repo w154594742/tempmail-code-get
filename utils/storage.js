@@ -7,6 +7,9 @@ class StorageManager {
         targetEmail: "abcd123@mailto.plus",
         currentDomainIndex: 0,
         generationMode: "nameNumber",
+        domainSelectionMode: "random",        // 域名选择模式：random/roundRobin/smart
+        domainSelectionHistory: [],           // 智能选择历史记录
+        avoidRepeatCount: 3,                  // 智能选择避免重复次数
         randomStringConfig: {
           minLength: 6,
           maxLength: 15

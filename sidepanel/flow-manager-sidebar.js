@@ -1609,14 +1609,16 @@ class SidebarFlowManager {
 
   // 显示页面
   showPage(pageId) {
-    // 隐藏所有页面
+    // 强制隐藏所有页面
     document.querySelectorAll('.page').forEach(page => {
+      page.style.display = 'none';
       page.classList.remove('active');
     });
 
     // 显示目标页面
     const targetPage = document.getElementById(pageId + 'Page');
     if (targetPage) {
+      targetPage.style.display = 'flex'; // 使用flex而不是block
       targetPage.classList.add('active');
     }
 
@@ -2533,6 +2535,18 @@ class SidebarFlowManager {
         const regexPatternInput = document.getElementById('regexPatternInput');
         if (regexPatternInput) regexPatternInput.value = regexConfig.pattern;
 
+        // 加载域名选择策略配置
+        const domainModeRadio = document.querySelector(`input[name="domainSelectionMode"][value="${settings.domainSelectionMode || 'random'}"]`);
+        if (domainModeRadio) {
+          domainModeRadio.checked = true;
+        }
+
+        // 设置避免重复次数
+        const avoidRepeatCountInput = document.getElementById('avoidRepeatCountInput');
+        if (avoidRepeatCountInput) {
+          avoidRepeatCountInput.value = settings.avoidRepeatCount || 3;
+        }
+
         // 更新预览
         this.updateNameNumberPreview();
         this.updateRandomStringPreview();
@@ -2540,6 +2554,12 @@ class SidebarFlowManager {
 
         // 绑定邮箱生成模式事件
         this.bindEmailGenerationModeEvents();
+
+        // 绑定域名选择策略事件
+        this.bindDomainSelectionModeEvents();
+
+        // 显示/隐藏域名选择配置
+        this.toggleDomainSelectionConfig();
 
         // 绑定失焦自动保存事件
         this.bindSettingsAutoSave();
@@ -2550,6 +2570,39 @@ class SidebarFlowManager {
       }
     } catch (error) {
       console.error('加载设置失败:', error);
+    }
+  }
+
+  // 绑定域名选择策略事件
+  bindDomainSelectionModeEvents() {
+    const domainModeRadios = document.querySelectorAll('input[name="domainSelectionMode"]');
+    domainModeRadios.forEach(radio => {
+      if (!radio.hasAttribute('data-domain-mode-bound')) {
+        radio.addEventListener('change', () => {
+          this.toggleDomainSelectionConfig();
+          this.saveSettings(); // 自动保存
+        });
+        radio.setAttribute('data-domain-mode-bound', 'true');
+      }
+    });
+
+    // 绑定避免重复次数输入框事件
+    const avoidRepeatCountInput = document.getElementById('avoidRepeatCountInput');
+    if (avoidRepeatCountInput && !avoidRepeatCountInput.hasAttribute('data-avoid-repeat-bound')) {
+      avoidRepeatCountInput.addEventListener('blur', () => {
+        this.saveSettings(); // 自动保存
+      });
+      avoidRepeatCountInput.setAttribute('data-avoid-repeat-bound', 'true');
+    }
+  }
+
+  // 切换域名选择配置显示
+  toggleDomainSelectionConfig() {
+    const smartConfig = document.getElementById('smartSelectionConfig');
+    const selectedMode = document.querySelector('input[name="domainSelectionMode"]:checked');
+
+    if (smartConfig) {
+      smartConfig.style.display = selectedMode && selectedMode.value === 'smart' ? 'block' : 'none';
     }
   }
 
@@ -2605,11 +2658,17 @@ class SidebarFlowManager {
       const maxLengthInput = document.getElementById('maxLengthInput');
       const regexPatternInput = document.getElementById('regexPatternInput');
 
+      // 获取域名选择策略配置
+      const selectedDomainMode = document.querySelector('input[name="domainSelectionMode"]:checked');
+      const avoidRepeatCountInput = document.getElementById('avoidRepeatCountInput');
+
       const settings = {
         domains: domainsInput ? domainsInput.value.trim() : '',
         targetEmail: targetEmailInput ? targetEmailInput.value.trim() : '',
         pinCode: pinCodeInput ? pinCodeInput.value.trim() : '',
         generationMode: selectedMode ? selectedMode.value : 'nameNumber',
+        domainSelectionMode: selectedDomainMode ? selectedDomainMode.value : 'random',
+        avoidRepeatCount: parseInt(avoidRepeatCountInput ? avoidRepeatCountInput.value : '3') || 3,
         randomStringConfig: {
           minLength: parseInt(minLengthInput ? minLengthInput.value : '6') || 6,
           maxLength: parseInt(maxLengthInput ? maxLengthInput.value : '15') || 15

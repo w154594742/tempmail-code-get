@@ -81,8 +81,12 @@ body {
 /* 主要内容区域 */
 .main-content {
     flex: 1;
-    overflow-y: auto;
+    overflow: hidden; /* 避免内容超出容器 */
     padding: 15px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* 允许flex子项收缩 */
+    height: 100%; /* 确保占满可用高度 */
 }
 
 /* 页面切换 */
@@ -91,7 +95,11 @@ body {
 }
 
 .page.active {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0; /* 允许flex子项收缩 */
+    overflow: hidden; /* 防止内容超出 */
 }
 
 /* 邮箱和验证码快速操作 */
@@ -268,7 +276,7 @@ body {
 
 /* 快速操作区域 */
 .quick-actions-section {
-    margin-bottom: 25px;
+    margin-bottom: 12px; /* 与其他区域保持一致的间距 */
 }
 
 .quick-actions-section h3 {
@@ -376,7 +384,7 @@ body {
 .email-tool-section {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 30px); /* 减去 main-content 的上下 padding */
+    height: 100%; /* 使用100%高度，与其他页面保持一致 */
 }
 
 .email-tool-section h2 {
@@ -1122,7 +1130,21 @@ body {
     max-width: 200px;
 }
 
+/* 设置页面布局 */
+#settingsPage {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* 使用100%高度，与其他页面保持一致 */
+    overflow-y: auto; /* 允许设置页面滚动 */
+}
+
 /* 设置页面 */
+.settings-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
 .settings-section h2 {
     font-size: 16px;
     font-weight: 600;
@@ -1309,12 +1331,18 @@ body {
 #homePage {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 30px); /* 减去 main-content 的上下 padding */
+    height: 100%; /* 使用100%高度，因为没有header */
 }
 
 /* 首页各个section的flex设置 */
 #homePage .quick-email-section {
     flex: none; /* 不伸缩，保持内容高度 */
+    margin-bottom: 8px; /* 进一步减少间距 */
+}
+
+#homePage .quick-actions-section {
+    flex: none; /* 不伸缩，保持内容高度 */
+    margin-bottom: 8px; /* 进一步减少间距 */
 }
 
 #homePage .status-section {
@@ -1325,15 +1353,12 @@ body {
     flex: 1; /* 占据剩余所有空间 */
     display: flex;
     flex-direction: column;
-    margin-top: 12px; /* 从25px减少到12px */
+    margin-top: 6px; /* 减少margin以获得更多空间 */
     min-height: 0; /* 允许flex子项收缩 */
+    overflow: hidden; /* 确保不会超出容器 */
 }
 
 /* 压缩首页空白区域 */
-#homePage .quick-email-section {
-    margin-bottom: 12px; /* 从25px减少到12px */
-}
-
 #homePage .email-quick-card,
 #homePage .code-quick-card,
 #homePage .flow-control-card,
@@ -1351,7 +1376,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 8px; /* 减少margin以获得更多空间 */
     flex: none; /* 不伸缩，保持固定高度 */
 }
 
@@ -1390,7 +1415,9 @@ body {
     flex: 1; /* 占据剩余空间，替代固定高度 */
     overflow: hidden;
     font-family: 'Courier New', monospace;
-    min-height: 200px; /* 设置最小高度，确保基本可用性 */
+    min-height: 150px; /* 减少最小高度，获得更好的伸缩性 */
+    display: flex; /* 使用flex布局来管理内部内容 */
+    flex-direction: column;
 }
 
 .logs-container.collapsed {
@@ -1398,14 +1425,17 @@ body {
     height: 0;
     border: none;
     min-height: 0;
+    overflow: hidden; /* 确保收起时完全隐藏内容 */
 }
 
 .logs-content {
-    height: 100%;
+    flex: 1; /* 占据容器内的所有可用空间 */
     overflow-y: auto;
+    overflow-x: hidden; /* 防止水平滚动 */
     padding: 8px;
     font-size: 11px;
     line-height: 1.4;
+    word-wrap: break-word; /* 确保长文本正确换行 */
 }
 
 .log-entry {
@@ -1441,6 +1471,32 @@ body {
 
 .log-message {
     color: #e0e0e0;
+}
+
+/* 流程管理页面布局 */
+#flowManagerPage {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* 使用100%高度，与首页保持一致 */
+}
+
+/* 流程管理页面各个section的flex设置 */
+#flowManagerPage .flow-controls-section {
+    flex: none; /* 不伸缩，保持内容高度 */
+}
+
+#flowManagerPage .flows-section {
+    flex: none; /* 不伸缩，保持内容高度 */
+    margin-bottom: 12px; /* 与日志区域的间距 */
+}
+
+#flowManagerPage .logs-section {
+    flex: 1; /* 占据剩余所有空间 */
+    display: flex;
+    flex-direction: column;
+    margin-top: 12px;
+    min-height: 0;
+    overflow: hidden;
 }
 
 /* 页面头部 */

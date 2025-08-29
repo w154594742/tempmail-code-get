@@ -80,8 +80,8 @@ class EmailGenerator {
         throw new Error('没有配置可用的域名');
       }
 
-      // 随机选择域名（不再使用轮询）
-      const selectedDomain = this.randomChoice(domains);
+      // 根据配置的策略选择域名
+      const selectedDomain = await this.selectDomain(domains, emailConfig);
 
       // 生成完整邮箱（自动添加@符号）
       const email = `${username}@${selectedDomain}`;
@@ -217,6 +217,60 @@ class EmailGenerator {
         oldestInHistory: null
       };
     }
+  }
+
+  // 域名选择主方法
+  async selectDomain(domains, emailConfig) {
+    const mode = emailConfig.domainSelectionMode || 'random';
+
+    switch(mode) {
+      case 'roundRobin':
+        return await this.roundRobinSelect(domains, emailConfig);
+      case 'smart':
+        return await this.smartSelect(domains, emailConfig);
+      case 'random':
+      default:
+        return this.randomChoice(domains);
+    }
+  }
+
+  // 轮询选择域名
+  async roundRobinSelect(domains, emailConfig) {
+    const currentIndex = emailConfig.currentDomainIndex || 0;
+    const selectedDomain = domains[currentIndex % domains.length];
+
+    // 更新索引到存储
+    const newIndex = (currentIndex + 1) % domains.length;
+    await this.storageManager.updateConfig('emailConfig', {
+      currentDomainIndex: newIndex
+    });
+
+    return selectedDomain;
+  }
+
+  // 智能选择域名（避免短期重复）
+  async smartSelect(domains, emailConfig) {
+    if (domains.length === 1) return domains[0];
+
+    const history = emailConfig.domainSelectionHistory || [];
+    const avoidCount = Math.min(emailConfig.avoidRepeatCount || 3, domains.length - 1);
+
+    // 获取最近使用的域名
+    const recentDomains = history.slice(-avoidCount);
+
+    // 过滤候选域名
+    let candidates = domains.filter(domain => !recentDomains.includes(domain));
+    if (candidates.length === 0) candidates = domains;
+
+    const selectedDomain = this.randomChoice(candidates);
+
+    // 更新历史记录（保留最近10次）
+    const newHistory = [...history, selectedDomain].slice(-10);
+    await this.storageManager.updateConfig('emailConfig', {
+      domainSelectionHistory: newHistory
+    });
+
+    return selectedDomain;
   }
 
   // 工具方法：随机选择数组元素
