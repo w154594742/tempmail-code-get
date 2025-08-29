@@ -241,7 +241,7 @@ class AutomationRunner {
       } catch (error) {
         console.error('生成密码失败:', error);
         this.sendLog(`⚠️ 密码生成失败: ${error.message}`, 'warn');
-        // 使用默认密码
+        // 使用默认密码（使用高兼容性特殊符号）
         this.context.password = 'DefaultPass123!@#';
         this.sendLog(`🔐 使用默认密码: ${this.context.password}`, 'info');
       }
@@ -449,11 +449,12 @@ class AutomationRunner {
   // 生成安全密码
   generateSecurePassword() {
     try {
-      // 定义字符集
+      // 定义字符集（优化特殊符号以提高网站兼容性）
       const passwordChars = {
         uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
         lowercase: 'abcdefghijklmnopqrstuvwxyz',
-        special: '!@#$%^&*()_+-=[]{}|;:,.<>?'
+        numbers: '0123456789',  // 添加数字字符集
+        special: '!@#_-'  // 使用高度兼容的特殊符号：感叹号、At符号、井号、下划线、连字符
       };
 
       // 随机确定长度（16-20位）
@@ -463,11 +464,12 @@ class AutomationRunner {
       const requiredChars = [
         this.getRandomChar(passwordChars.uppercase),
         this.getRandomChar(passwordChars.lowercase),
+        this.getRandomChar(passwordChars.numbers),  // 确保至少包含一个数字
         this.getRandomChar(passwordChars.special)
       ];
 
       // 填充剩余位置
-      const allChars = passwordChars.uppercase + passwordChars.lowercase + passwordChars.special;
+      const allChars = passwordChars.uppercase + passwordChars.lowercase + passwordChars.numbers + passwordChars.special;
       const remainingLength = length - requiredChars.length;
 
       for (let i = 0; i < remainingLength; i++) {
@@ -486,7 +488,7 @@ class AutomationRunner {
       }
     } catch (error) {
       console.error('生成密码失败:', error);
-      // 返回一个默认的安全密码
+      // 返回一个默认的安全密码（使用高兼容性特殊符号）
       return 'DefaultPass123!@#';
     }
   }
@@ -510,10 +512,11 @@ class AutomationRunner {
   validatePassword(password) {
     const hasUppercase = /[A-Z]/.test(password);
     const hasLowercase = /[a-z]/.test(password);
-    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password);
+    const hasNumbers = /[0-9]/.test(password);  // 添加数字验证
+    const hasSpecial = /[!@#_\-]/.test(password);  // 更新正则表达式以匹配高度兼容的特殊符号集
     const hasValidLength = password.length >= 16 && password.length <= 20;
 
-    return hasUppercase && hasLowercase && hasSpecial && hasValidLength;
+    return hasUppercase && hasLowercase && hasNumbers && hasSpecial && hasValidLength;
   }
 
   // 获取验证码（直接调用background方法，支持进度回调）

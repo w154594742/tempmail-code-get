@@ -26,7 +26,12 @@
                         <div class="card-content">
                             <div class="email-display">
                                 <input type="text" id="homeEmailInput" readonly placeholder="点击生成邮箱地址">
-                                <button id="homeGenerateEmailBtn" class="btn btn-primary">生成新邮箱</button>
+                                <div class="email-generation-controls">
+                                    <select id="domainSelector" class="domain-selector">
+                                        <option value="auto">自动选择</option>
+                                    </select>
+                                    <button id="homeGenerateEmailBtn" class="btn btn-primary">生成新邮箱</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -820,8 +825,8 @@
                 </div>
                 <div class="variable-item">
                     <div class="variable-name">🔐 {{password}}</div>
-                    <div class="variable-desc">随机生成的安全密码，16-20位，包含大小写字母和特殊符号</div>
-                    <div class="variable-example">示例：Kj8#mP2$nQ9@xR5!</div>
+                    <div class="variable-desc">随机生成的安全密码，16-20位，包含大小写字母数字和高度兼容特殊符号(!@#_-)</div>
+                    <div class="variable-example">示例：Kj8#mP2_nQ9@xR5!</div>
                 </div>
                 <div class="variable-note">
                     <strong>💡 使用提示：</strong>
@@ -829,8 +834,6 @@
                         <li>变量会在流程执行时自动替换为实际值</li>
                         <li>{{email}}、{{firstName}}、{{lastName}}、{{fullName}}、{{password}}变量在流程开始时同时生成</li>
                         <li>{{code}}变量在需要时从邮箱自动提取</li>
-                        <li>姓名变量与邮箱地址保持一致，确保数据的关联性</li>
-                        <li>密码变量每次生成都是唯一的，符合安全标准</li>
                     </ul>
                 </div>
             </div>
