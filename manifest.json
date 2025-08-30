@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "临时邮箱验证码获取工具",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "自动生成临时邮箱并获取验证码，支持历史记录管理",
   "permissions": [
     "storage",
