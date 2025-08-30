@@ -323,7 +323,31 @@ class BackgroundService {
         throw new Error('邮箱生成器未初始化');
       }
 
-      const email = await emailGenerator.generateEmail();
+      let email;
+      const requestedDomain = message && message.domain ? String(message.domain).trim() : null;
+
+      if (requestedDomain) {
+        // 校验域名是否在配置中
+        const emailConfig = await storageManager.getConfig('emailConfig');
+        const domainsStr = (emailConfig && emailConfig.domains) || '';
+        const domains = domainsStr.split(/[,，]/).map(d => d.trim()).filter(d => d.length > 0);
+
+        if (domains.includes(requestedDomain)) {
+          // 按指定域名生成（仅首页使用，不影响策略状态）
+          if (typeof emailGenerator.generateEmailWithDomain === 'function') {
+            email = await emailGenerator.generateEmailWithDomain(requestedDomain);
+          } else {
+            // 兼容：若方法不存在（旧版本），回退默认逻辑
+            email = await emailGenerator.generateEmail();
+          }
+        } else {
+          // 域名不在列表，回退默认逻辑
+          email = await emailGenerator.generateEmail();
+        }
+      } else {
+        // 保持原有逻辑（依据策略选择域名）
+        email = await emailGenerator.generateEmail();
+      }
 
       // emailGenerator.generateEmail() 已经处理了历史记录保存
       // 不需要在这里重复保存

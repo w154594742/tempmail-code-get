@@ -28,8 +28,69 @@ class SidebarFlowManager {
     // 加载初始数据（邮箱和验证码）
     await this.loadInitialData();
 
+    // 初始化首页域名下拉
+    await this.initDomainSelector();
+
     this.addLog('侧边栏管理器初始化完成', 'success');
     console.log('SidebarFlowManager 初始化完成');
+  }
+
+  // 初始化首页域名下拉：填充域名、恢复上次选择、绑定更改事件
+  async initDomainSelector() {
+    try {
+      const select = document.getElementById('domainSelector');
+      if (!select) return;
+
+      // 读取设置，获取域名与策略
+      const resp = await chrome.runtime.sendMessage({ action: 'getSettings' });
+      if (!resp || !resp.success) return;
+
+      const settings = resp.settings || {};
+      const domainsStr = settings.domains || '';
+      const domains = domainsStr.split(/[,，]/).map(d => d.trim()).filter(d => d.length > 0);
+
+      // 重置下拉，仅保留第一个自动选项
+      select.innerHTML = '';
+      const modeTextMap = {
+        random: '随机',
+        roundRobin: '轮询',
+        smart: '智能'
+      };
+      const autoText = `自动选择（策略：${modeTextMap[settings.domainSelectionMode || 'random'] || '随机'}）`;
+
+      const optAuto = document.createElement('option');
+      optAuto.value = 'auto';
+      optAuto.textContent = autoText;
+      select.appendChild(optAuto);
+
+      // 追加域名列表
+      domains.forEach(domain => {
+        const opt = document.createElement('option');
+        opt.value = domain;
+        opt.textContent = domain;
+        select.appendChild(opt);
+      });
+
+      // 恢复上次选择
+      const stored = await chrome.storage.local.get(['homeSelectedDomain']);
+      const last = stored.homeSelectedDomain;
+      if (last && (last === 'auto' || domains.includes(last))) {
+        select.value = last;
+      } else {
+        select.value = 'auto';
+      }
+
+      // 绑定变更事件，记住选择
+      if (!select.hasAttribute('data-domain-bound')) {
+        select.addEventListener('change', async (e) => {
+          const value = e.target.value || 'auto';
+          await chrome.storage.local.set({ homeSelectedDomain: value });
+        });
+        select.setAttribute('data-domain-bound', 'true');
+      }
+    } catch (err) {
+      console.error('初始化域名下拉失败:', err);
+    }
   }
 
   // 绑定事件监听器
@@ -1652,6 +1713,9 @@ class SidebarFlowManager {
       this.loadEmailHistory();
       // 默认显示邮箱历史标签页
       this.switchTab('email');
+    } else if (pageId === 'home') {
+      // 刷新首页域名下拉框，确保与最新设置同步
+      this.initDomainSelector();
     }
   }
 
@@ -2345,7 +2409,15 @@ class SidebarFlowManager {
   async generateEmailForHome() {
     try {
       this.addLog('开始生成邮箱地址...', 'info');
-      const response = await chrome.runtime.sendMessage({ action: 'generateEmail' });
+      // 读取首页域名选择
+      const selector = document.getElementById('domainSelector');
+      const selected = selector ? (selector.value || 'auto') : 'auto';
+
+      const payload = selected === 'auto'
+        ? { action: 'generateEmail' }
+        : { action: 'generateEmail', domain: selected };
+
+      const response = await chrome.runtime.sendMessage(payload);
       if (response.success) {
         const emailInput = document.getElementById('homeEmailInput');
         emailInput.value = response.email;

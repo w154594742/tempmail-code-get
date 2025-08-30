@@ -104,10 +104,431 @@ body {
 
 /* 邮箱和验证码快速操作 */
 .quick-email-section {
-    margin-bottom: 25px;
+    margin-bottom: 20px;
 }
 
-.email-quick-card,
+/* ========== 方案2C：自适应分栏布局 ========== */
+
+/* 统一临时邮箱卡片容器 */
+.unified-tempmail-card {
+    background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+    border: 1px solid #e3e8ff;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+    transition: all 0.2s ease;
+}
+
+.unified-tempmail-card:hover {
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.12);
+    border-color: #c7d2fe;
+}
+
+/* 自适应分栏布局核心 */
+.adaptive-split-layout {
+    display: flex;
+    gap: 12px;
+    align-items: stretch; /* 确保两列高度一致 */
+    min-height: 120px; /* 设置最小高度 */
+}
+
+/* 邮箱列配置 */
+.email-column {
+    flex: 2; /* 占用2份空间 */
+    min-width: 160px; /* 最小宽度确保可用性 */
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+    transition: all 0.2s ease;
+}
+
+/* 验证码列配置 */
+.code-column {
+    flex: 1; /* 占用1份空间 */
+    min-width: 140px; /* 增加最小宽度确保验证码完整显示 */
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+    transition: all 0.2s ease;
+}
+
+/* 列悬停效果 */
+.email-column:hover,
+.code-column:hover {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: #c7d2fe;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(99, 102, 241, 0.1);
+}
+
+/* 列标题样式 */
+.column-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.column-icon {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.column-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #4b5563;
+    letter-spacing: 0.025em;
+}
+
+/* ========== 分栏布局下的输入框和控件优化 ========== */
+
+/* 分栏模式下的输入框 - 使用更高优先级覆盖旧样式 */
+.adaptive-split-layout .email-display input,
+.adaptive-split-layout .code-display input {
+    width: 100% !important;
+    min-width: 0 !important; /* 允许flex收缩 */
+    padding: 8px 10px !important;
+    border: 2px solid #e5e7eb !important;
+    border-radius: 6px !important;
+    font-size: 11px !important;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+    background: #ffffff !important;
+    color: #374151 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    margin-bottom: 8px !important;
+    /* 修正输入框显示 - 强制覆盖旧样式 */
+    height: auto !important;
+    min-height: 20px !important; /* 确保最小显示高度 */
+    line-height: 1.2 !important; /* 设置行高 */
+    overflow: visible !important; /* 改为visible让内容完整显示 */
+    white-space: nowrap !important; /* 默认不换行 */
+    text-overflow: initial !important; /* 不使用省略号 */
+    position: static !important; /* 覆盖position设置 */
+}
+
+/* 邮箱输入框特殊处理 */
+.adaptive-split-layout .email-display input {
+    white-space: nowrap !important; /* 邮箱地址不换行 */
+    word-break: normal !important; /* 覆盖通用设置 */
+    overflow-x: auto !important; /* 水平滚动显示长邮箱 */
+    overflow-y: hidden !important;
+    overflow: auto !important; /* 覆盖通用overflow设置 */
+    scrollbar-width: thin; /* Firefox滚动条样式 */
+}
+
+/* 邮箱输入框webkit滚动条样式 */
+.adaptive-split-layout .email-display input::-webkit-scrollbar {
+    height: 4px;
+}
+
+.adaptive-split-layout .email-display input::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 2px;
+}
+
+.adaptive-split-layout .email-display input::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 2px;
+}
+
+.adaptive-split-layout .email-display input::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* 验证码输入框特殊处理 - 移除底部边距和优化显示 */
+.adaptive-split-layout .code-display input {
+    margin-bottom: 0 !important;
+    /* 针对验证码的显示优化 */
+    text-align: center !important; /* 居中显示验证码 */
+    font-weight: 600 !important; /* 加粗显示 */
+    letter-spacing: 0.1em !important; /* 增加字符间距提升可读性 */
+    padding: 8px 6px !important; /* 减少左右内边距给内容更多空间 */
+    white-space: nowrap !important; /* 验证码不换行 */
+    word-break: normal !important; /* 覆盖通用设置 */
+    overflow: visible !important; /* 改为visible显示完整内容 */
+    text-overflow: initial !important; /* 不显示省略号 */
+}
+
+/* 输入框聚焦和悬停状态 */
+.adaptive-split-layout .email-display input:hover,
+.adaptive-split-layout .code-display input:hover {
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+}
+
+.adaptive-split-layout .email-display input:focus,
+.adaptive-split-layout .code-display input:focus {
+    outline: none;
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+}
+
+/* 有内容时的特殊样式 */
+.adaptive-split-layout #homeEmailInput:not(:placeholder-shown) {
+    background: linear-gradient(135deg, #f3f4ff 0%, #ffffff 100%);
+    border-color: #c7d2fe;
+    font-weight: 500;
+}
+
+.adaptive-split-layout #homeCodeInput:not(:placeholder-shown) {
+    background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%);
+    border-color: #bfdbfe;
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: 0.1em;
+}
+
+/* ========== 分栏布局下的按钮和控件组 ========== */
+
+/* 邮箱生成控制区域 */
+.adaptive-split-layout .email-generation-controls {
+    display: flex;
+    gap: 6px;
+    align-items: stretch;
+}
+
+/* 分栏布局下的验证码显示区域 - 强制垂直布局 */
+.adaptive-split-layout .code-display {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+}
+
+/* 验证码控制区域 - 改为垂直布局 */
+.adaptive-split-layout .code-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+/* 验证码按钮行 */
+.adaptive-split-layout .code-button-row {
+    display: flex;
+    gap: 4px;
+    align-items: stretch;
+}
+
+/* 分栏布局下的域名选择器 */
+.adaptive-split-layout .domain-selector {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 2px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 10px;
+    background: white;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23666'><path d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    background-size: 12px;
+    padding-right: 24px;
+}
+
+.adaptive-split-layout .domain-selector:hover {
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+}
+
+.adaptive-split-layout .domain-selector:focus {
+    outline: none;
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15);
+}
+
+/* 分栏布局下的按钮 */
+.adaptive-split-layout .btn {
+    padding: 6px 10px;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    min-width: 0;
+}
+
+/* 邮箱生成按钮 */
+.adaptive-split-layout #homeGenerateEmailBtn {
+    flex: 0 0 auto;
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: white;
+    box-shadow: 0 2px 4px rgba(139, 92, 246, 0.25);
+    min-width: 50px;
+}
+
+.adaptive-split-layout #homeGenerateEmailBtn:hover {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+    box-shadow: 0 3px 8px rgba(139, 92, 246, 0.35);
+    transform: translateY(-1px);
+}
+
+/* 验证码按钮组 */
+.adaptive-split-layout #homeGetCodeBtn {
+    flex: 1;
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: white;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.25);
+}
+
+.adaptive-split-layout #homeGetCodeBtn:hover {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+    box-shadow: 0 3px 8px rgba(59, 130, 246, 0.35);
+    transform: translateY(-1px);
+}
+
+.adaptive-split-layout #homeStopCodeBtn {
+    flex: 1;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.25);
+}
+
+.adaptive-split-layout #homeStopCodeBtn:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    box-shadow: 0 3px 8px rgba(239, 68, 68, 0.35);
+    transform: translateY(-1px);
+}
+
+/* ========== 响应式断点处理 ========== */
+
+/* 紧凑模式 (宽度 280px-320px) */
+@media (max-width: 320px) {
+    .adaptive-split-layout {
+        gap: 8px;
+    }
+    
+    .email-column {
+        min-width: 120px;
+        padding: 10px;
+    }
+    
+    .code-column {
+        min-width: 130px; /* 保持验证码列稍宽 */
+        padding: 10px;
+    }
+    
+    .adaptive-split-layout .btn {
+        font-size: 9px;
+        padding: 5px 8px;
+    }
+    
+    .adaptive-split-layout .domain-selector {
+        font-size: 9px;
+        padding: 5px 6px;
+        padding-right: 20px;
+        background-size: 10px;
+        background-position: right 4px center;
+    }
+    
+    .adaptive-split-layout .email-display input,
+    .adaptive-split-layout .code-display input {
+        font-size: 10px;
+        padding: 6px 8px;
+    }
+}
+
+/* 极窄模式 (宽度 < 280px) - 降级为垂直堆叠 */
+@media (max-width: 279px) {
+    .adaptive-split-layout {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .email-column,
+    .code-column {
+        min-width: unset;
+        flex: none;
+    }
+    
+    /* 垂直模式下的按钮优化 */
+    .adaptive-split-layout .email-generation-controls {
+        gap: 8px;
+    }
+    
+    .adaptive-split-layout .code-controls {
+        gap: 6px;
+    }
+    
+    .adaptive-split-layout #homeGenerateEmailBtn {
+        min-width: 80px;
+    }
+    
+    /* 列标题在垂直模式下的优化 */
+    .column-header {
+        margin-bottom: 8px;
+        padding-bottom: 4px;
+    }
+    
+    .column-title {
+        font-size: 11px;
+    }
+}
+
+/* 超宽模式优化 (宽度 > 400px) */
+@media (min-width: 401px) {
+    .adaptive-split-layout {
+        gap: 16px;
+    }
+    
+    .email-column {
+        min-width: 180px;
+    }
+    
+    .code-column {
+        min-width: 140px;
+    }
+    
+    .adaptive-split-layout .email-display input,
+    .adaptive-split-layout .code-display input {
+        font-size: 12px;
+        padding: 10px 12px;
+    }
+    
+    .adaptive-split-layout .btn {
+        font-size: 11px;
+        padding: 8px 12px;
+    }
+    
+    .adaptive-split-layout .domain-selector {
+        font-size: 11px;
+        padding: 8px 10px;
+        padding-right: 28px;
+        background-size: 14px;
+        background-position: right 8px center;
+    }
+}
+
+/* 临时邮箱统一卡片样式 */
+.email-quick-card {
+    background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+    border: 1px solid #e3e8ff;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+    transition: all 0.2s ease;
+}
+
+.email-quick-card:hover {
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.12);
+    border-color: #c7d2fe;
+}
+
 .code-quick-card,
 .flow-control-card,
 .element-picker-card {
@@ -121,47 +542,121 @@ body {
 .card-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: 10px;
+    margin-bottom: 16px;
 }
 
 .card-icon {
-    font-size: 18px;
+    font-size: 20px;
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .card-header h3 {
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
     margin: 0;
+    letter-spacing: -0.025em;
 }
 
 .email-display,
 .code-display {
     display: flex;
     gap: 8px;
+    align-items: stretch; /* 改为stretch以确保子元素高度一致 */
+    /* 移除flex-wrap，改用更好的布局方案 */
+}
+
+/* 专门针对邮箱显示区域的布局优化 */
+.email-display {
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* 邮箱生成控制区域 */
+.email-generation-controls {
+    display: flex;
+    gap: 6px;
     align-items: center;
+    flex-shrink: 0; /* 防止控制区域被压缩 */
+}
+
+/* 域名选择器样式美化 */
+.domain-selector {
+    padding: 10px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 140px;
+    max-width: 220px;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23666'><path d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+    font-weight: 500;
+}
+
+.domain-selector:hover {
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    background: linear-gradient(135deg, #f3f4ff 0%, #ffffff 100%);
+    transform: translateY(-1px);
+}
+
+.domain-selector:focus {
+    outline: none;
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+    background: linear-gradient(135deg, #f3f4ff 0%, #ffffff 100%);
 }
 
 .email-display input,
 .code-display input {
     flex: 1;
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 12px;
-    background: #f9f9f9;
-    cursor: pointer; /* 添加手型指针提示可点击 */
-    transition: all 0.2s ease; /* 添加过渡动画 */
+    min-width: 0; /* 允许flex子项收缩 */
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+    background: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s ease;
     position: relative;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #374151;
+}
+
+/* 邮箱输入框特殊样式 */
+.email-display input {
+    background: linear-gradient(135deg, #fafbff 0%, #ffffff 100%);
+    border-color: #ddd6fe;
 }
 
 /* 为有内容的输入框添加悬停效果 */
 #homeEmailInput:not(:placeholder-shown):hover,
 #homeCodeInput:not(:placeholder-shown):hover {
-    background: #e8f4fd;
-    border-color: #4285f4;
-    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    transform: translateY(-1px);
+}
+
+/* 邮箱输入框悬停特效 */
+#homeEmailInput:not(:placeholder-shown):hover {
+    background: linear-gradient(135deg, #f3f4ff 0%, #ffffff 100%);
+    border-color: #7c3aed;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
 }
 
 /* 为输入框添加点击提示样式 */
@@ -175,9 +670,33 @@ body {
 .email-display button,
 .code-display button,
 .control-display button {
-    padding: 8px 12px;
-    font-size: 12px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
     white-space: nowrap;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* 生成邮箱按钮特殊样式 */
+#homeGenerateEmailBtn {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.25);
+    font-weight: 600;
+}
+
+#homeGenerateEmailBtn:hover {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.35);
+    transform: translateY(-1px);
+}
+
+#homeGenerateEmailBtn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.25);
 }
 
 .control-display {

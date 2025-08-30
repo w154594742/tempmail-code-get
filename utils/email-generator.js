@@ -131,6 +131,69 @@ class EmailGenerator {
     return emails;
   }
 
+  // 使用指定域名生成邮箱（仅首页调用，不更新域名选择历史/索引）
+  async generateEmailWithDomain(domain) {
+    try {
+      if (!this.storageManager) {
+        await this.init();
+      }
+
+      const emailConfig = await this.storageManager.getConfig('emailConfig');
+      const mode = emailConfig.generationMode || 'nameNumber';
+
+      // 与generateEmail相同的用户名生成逻辑
+      const firstNames = [
+        "linda", "john", "mary", "david", "sarah", "michael", "jennifer", "robert", "lisa", "james",
+        "patricia", "william", "elizabeth", "richard", "barbara", "joseph", "susan", "thomas", "jessica", "charles",
+        "nancy", "christopher", "karen", "daniel", "betty", "matthew", "helen", "anthony", "sandra", "mark",
+        "donna", "donald", "carol", "steven", "ruth", "paul", "sharon", "andrew", "michelle", "joshua",
+        "laura", "kenneth", "sarah", "kevin", "kimberly", "brian", "deborah", "george", "dorothy", "timothy",
+        "lisa", "ronald", "nancy", "jason", "karen", "edward", "betty", "jeffrey", "helen", "ryan",
+        "sandra", "jacob", "donna", "gary", "carol", "nicholas", "ruth", "eric", "sharon", "jonathan",
+        "michelle", "stephen", "laura", "larry", "sarah", "justin", "kimberly", "scott", "deborah", "brandon",
+        "dorothy", "benjamin", "lisa", "samuel", "nancy", "gregory", "karen", "alexander", "betty", "patrick",
+        "helen", "frank", "sandra", "raymond", "donna", "jack", "carol", "dennis", "ruth", "jerry", "sharon"
+      ];
+      const lastNames = [
+        "garcia", "smith", "johnson", "brown", "davis", "miller", "wilson", "moore", "taylor", "anderson",
+        "thomas", "jackson", "white", "harris", "martin", "thompson", "martinez", "robinson", "clark", "rodriguez",
+        "lewis", "lee", "walker", "hall", "allen", "young", "hernandez", "king", "wright", "lopez",
+        "hill", "scott", "green", "adams", "baker", "gonzalez", "nelson", "carter", "mitchell", "perez",
+        "roberts", "turner", "phillips", "campbell", "parker", "evans", "edwards", "collins", "stewart", "sanchez",
+        "morris", "rogers", "reed", "cook", "morgan", "bell", "murphy", "bailey", "rivera", "cooper",
+        "richardson", "cox", "howard", "ward", "torres", "peterson", "gray", "ramirez", "james", "watson",
+        "brooks", "kelly", "sanders", "price", "bennett", "wood", "barnes", "ross", "henderson", "coleman",
+        "jenkins", "perry", "powell", "long", "patterson", "hughes", "flores", "washington", "butler", "simmons",
+        "foster", "gonzales", "bryant", "alexander", "russell", "griffin", "diaz", "hayes", "myers", "ford"
+      ];
+
+      let username;
+      if (mode === 'regexPattern') {
+        const config = emailConfig.regexPatternConfig || { pattern: "[a-z]{3,8}\\d{2,4}", maxLength: 20 };
+        username = this.generateFromRegex(config.pattern, config.maxLength);
+      } else if (mode === 'randomString') {
+        const config = emailConfig.randomStringConfig || { minLength: 6, maxLength: 15 };
+        username = this.generateRandomString(config.minLength, config.maxLength);
+      } else {
+        const firstName = this.randomChoice(firstNames);
+        const lastName = this.randomChoice(lastNames);
+        const randomNum = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+        username = `${firstName}${lastName}${randomNum}`;
+      }
+
+      // 生成完整邮箱（直接使用指定域名）
+      const email = `${username}@${domain}`;
+
+      // 保存到历史记录
+      await this.storageManager.saveLastEmail(email);
+      await this.storageManager.addEmailToHistory(email);
+
+      return email;
+    } catch (error) {
+      console.error('指定域名生成邮箱失败:', error);
+      throw new Error('邮箱生成失败: ' + error.message);
+    }
+  }
   // 检查邮箱是否已存在于历史记录中
   async isEmailInHistory(email) {
     try {

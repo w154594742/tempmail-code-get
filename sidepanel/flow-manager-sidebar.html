@@ -16,36 +16,48 @@
         <main class="main-content">
             <!-- 首页 - 流程管理 -->
             <div id="homePage" class="page active">
-                <!-- 邮箱和验证码快速操作 -->
+                <!-- 邮箱和验证码快速操作 - 自适应分栏布局 -->
                 <section class="quick-email-section">
-                    <div class="email-quick-card">
+                    <div class="unified-tempmail-card">
                         <div class="card-header">
                             <span class="card-icon">📧</span>
-                            <h3>临时邮箱</h3>
+                            <h3>临时邮箱工具</h3>
                         </div>
                         <div class="card-content">
-                            <div class="email-display">
-                                <input type="text" id="homeEmailInput" readonly placeholder="点击生成邮箱地址">
-                                <div class="email-generation-controls">
-                                    <select id="domainSelector" class="domain-selector">
-                                        <option value="auto">自动选择</option>
-                                    </select>
-                                    <button id="homeGenerateEmailBtn" class="btn btn-primary">生成新邮箱</button>
+                            <div class="adaptive-split-layout">
+                                <!-- 邮箱生成区域 -->
+                                <div class="email-column">
+                                    <div class="column-header">
+                                        <span class="column-icon">📧</span>
+                                        <span class="column-title">临时邮箱</span>
+                                    </div>
+                                    <div class="email-display">
+                                        <div class="email-generation-controls">
+                                            <select id="domainSelector" class="domain-selector">
+                                                <option value="auto">自动选择</option>
+                                            </select>
+                                            <button id="homeGenerateEmailBtn" class="btn btn-primary">生成新邮箱</button>
+                                        </div>
+                                        <input type="text" id="homeEmailInput" readonly">
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="code-quick-card">
-                        <div class="card-header">
-                            <span class="card-icon">🔐</span>
-                            <h3>验证码</h3>
-                        </div>
-                        <div class="card-content">
-                            <div class="code-display">
-                                <input type="text" id="homeCodeInput" readonly placeholder="点击获取验证码">
-                                <button id="homeGetCodeBtn" class="btn btn-primary">获取验证码</button>
-                                <button id="homeStopCodeBtn" class="btn btn-danger" style="display: none;">停止获取</button>
+                                
+                                <!-- 验证码获取区域 -->
+                                <div class="code-column">
+                                    <div class="column-header">
+                                        <span class="column-icon">🔐</span>
+                                        <span class="column-title">验证码</span>
+                                    </div>
+                                    <div class="code-display">
+                                        <input type="text" id="homeCodeInput" readonly>
+                                        <div class="code-controls">
+                                            <div class="code-button-row">
+                                                <button id="homeGetCodeBtn" class="btn btn-primary">获取验证码</button>
+                                                <button id="homeStopCodeBtn" class="btn btn-danger" style="display: none;">停止</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

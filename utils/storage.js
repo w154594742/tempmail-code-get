@@ -66,6 +66,19 @@ class StorageManager {
     }
   }
 
+  // 更新配置项（部分更新）
+  async updateConfig(key, updates) {
+    try {
+      const currentConfig = await this.getConfig(key);
+      const updatedConfig = { ...currentConfig, ...updates };
+      await this.setConfig(key, updatedConfig);
+      return true;
+    } catch (error) {
+      console.error('更新配置失败:', error);
+      return false;
+    }
+  }
+
   // 重置配置
   async resetConfig() {
     try {
