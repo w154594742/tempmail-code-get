@@ -109,6 +109,82 @@
 - 更新版本时必须使用相同的私钥文件
 - 生成的CRX文件可分享给其他用户安装
 
+#### 方法四：企业策略强制安装（解决重启消失问题）
+
+**适用场景**：解决开发者模式扩展重启后消失的问题
+
+Chrome 73版本后，Google修改了插件策略，开发者模式加载的未打包扩展程序在浏览器重启后会自动消失。这是Chrome的安全机制，不是bug。如果需要让扩展程序在重启后持久保存，可以使用企业策略强制安装。
+
+**前置要求**：
+- 管理员权限
+- 已按照"方法三"生成CRX文件和扩展程序ID
+- 了解此方法会绕过Chrome安全机制
+
+**Windows配置步骤**：
+
+*方法1：注册表配置*
+1. 按 `Win+R`，输入 `regedit`，以管理员身份运行
+2. 导航到：`HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome`
+3. 如果没有Chrome键，右键创建"项" → 命名为"Chrome"
+4. 在Chrome下创建"项" → 命名为"ExtensionInstallForcelist"
+5. 在ExtensionInstallForcelist下创建"字符串值"：
+   - 名称：`1`（如有多个扩展则递增：2、3、4...）
+   - 数值数据：`[扩展程序ID];file:///[CRX文件完整路径]`
+   - 示例：`abcdefghijklmnopqrstuvwxyz123456;file:///C:/Users/用户名/Desktop/tempmail-code-get.crx`
+
+*方法2：组策略配置*
+1. 按 `Win+R`，输入 `gpedit.msc`，以管理员身份运行
+2. 导航到：计算机配置 → 管理模板 → Google Chrome → 扩展程序
+3. 双击"配置扩展程序安装强制列表"
+4. 选择"已启用"
+5. 点击"显示"按钮，添加扩展程序信息：
+   - 值：`[扩展程序ID];file:///[CRX文件完整路径]`
+
+**Mac配置步骤**：
+
+1. **创建配置文件**：
+   ```bash
+   sudo nano /Library/Preferences/com.google.Chrome.plist
+   ```
+
+2. **添加配置内容**：
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+   <plist version="1.0">
+   <dict>
+       <key>ExtensionInstallForcelist</key>
+       <array>
+           <string>[扩展程序ID];file:///[CRX文件完整路径]</string>
+       </array>
+   </dict>
+   </plist>
+   ```
+
+3. **设置文件权限**：
+   ```bash
+   sudo chmod 644 /Library/Preferences/com.google.Chrome.plist
+   ```
+
+**获取扩展程序ID**：
+1. 在Chrome中访问 `chrome://extensions/`
+2. 开启开发者模式
+3. 点击"打包扩展程序"
+4. 选择项目文件夹，生成CRX文件
+5. 在扩展程序列表中找到你的扩展，复制32位字符的ID
+
+**重要提示**：
+- ⚠️ **需要管理员权限**：所有配置都需要系统管理员权限
+- ⚠️ **安全风险**：此方法绕过Chrome安全机制，请谨慎使用
+- ⚠️ **路径格式**：CRX文件路径必须使用绝对路径，格式为 `file:///`
+- ⚠️ **重启生效**：配置完成后需要完全重启Chrome浏览器
+- ⚠️ **维护成本**：每次更新扩展都需要重新配置
+
+**替代建议**：
+- 对于个人开发：建议接受开发者模式的现状，重启后重新加载
+- 对于正式发布：建议发布到Chrome Web Store（需要$5开发者费用）
+- 对于企业内部：可以考虑使用此企业策略方法
+
 ### 基础配置
 
 1. **打开侧边栏**: 点击扩展图标，侧边栏在右侧打开
