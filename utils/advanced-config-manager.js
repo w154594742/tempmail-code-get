@@ -42,17 +42,7 @@ class AdvancedConfigManager {
           notificationSound: { type: 'boolean', default: true }
         }
       },
-      performance: {
-        type: 'object',
-        properties: {
-          enableMonitoring: { type: 'boolean', default: true },
-          collectMetrics: { type: 'boolean', default: true },
-          optimizeSelectors: { type: 'boolean', default: true },
-          cacheElements: { type: 'boolean', default: true },
-          preloadResources: { type: 'boolean', default: false },
-          memoryThreshold: { type: 'number', min: 50, max: 500, default: 100 }
-        }
-      },
+
       security: {
         type: 'object',
         properties: {
@@ -141,12 +131,6 @@ class AdvancedConfigManager {
             ...this.generateDefaultConfig().execution,
             maxRetries: 5,
             retryInterval: 3000
-          },
-          performance: {
-            ...this.generateDefaultConfig().performance,
-            enableMonitoring: true,
-            optimizeSelectors: true,
-            cacheElements: true
           },
           security: {
             ...this.generateDefaultConfig().security,

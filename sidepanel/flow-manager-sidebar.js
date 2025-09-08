@@ -1239,7 +1239,7 @@ class SidebarFlowManager {
         updatedAt: Date.now()
       };
 
-      console.log('准备测试流程:', testFlow);
+      console.log('准备测试流程:', JSON.stringify(testFlow, null, 2));
 
       const response = await this.sendMessage({
         action: 'startAutomationFlow',
@@ -2578,11 +2578,11 @@ class SidebarFlowManager {
     try {
       console.log('开始加载设置...');
       const response = await chrome.runtime.sendMessage({ action: 'getSettings' });
-      console.log('获取设置响应:', response);
+      console.log('获取设置响应:', JSON.stringify(response, null, 2));
 
       if (response.success) {
         const settings = response.settings || {};
-        console.log('设置数据:', settings);
+        console.log('设置数据:', JSON.stringify(settings, null, 2));
 
         // 填充表单
         const domainsInput = document.getElementById('domainsInput');
@@ -2788,7 +2788,7 @@ class SidebarFlowManager {
         }
       };
 
-      console.log('保存设置:', settings);
+      console.log('保存设置:', JSON.stringify(settings, null, 2));
       const response = await chrome.runtime.sendMessage({
         action: 'saveSettings',
         settings: settings
@@ -2822,6 +2822,20 @@ class SidebarFlowManager {
     }
   }
 
+  // 智能格式化console参数
+  formatLogArgs(args) {
+    return args.map(arg => {
+      if (typeof arg === 'object' && arg !== null) {
+        try {
+          return JSON.stringify(arg, null, 2);
+        } catch (error) {
+          return `[Object: ${error.message}]`;
+        }
+      }
+      return String(arg);
+    }).join(' ');
+  }
+
   // 监听控制台日志
   setupConsoleCapture() {
     // 保存原始console方法
@@ -2832,17 +2846,21 @@ class SidebarFlowManager {
     // 重写console方法
     console.log = (...args) => {
       originalLog.apply(console, args);
-      this.addLog(args.join(' '), 'info');
+      const message = this.formatLogArgs(args);
+      // 过滤掉一些不重要的日志
+      if (!message.includes('SidebarFlowManager') && !message.includes('初始化完成')) {
+        this.addLog(message, 'info');
+      }
     };
 
     console.warn = (...args) => {
       originalWarn.apply(console, args);
-      this.addLog(args.join(' '), 'warn');
+      this.addLog(this.formatLogArgs(args), 'warn');
     };
 
     console.error = (...args) => {
       originalError.apply(console, args);
-      this.addLog(args.join(' '), 'error');
+      this.addLog(this.formatLogArgs(args), 'error');
     };
   }
 
@@ -2914,33 +2932,7 @@ class SidebarFlowManager {
     }
   }
 
-  // 监听控制台日志
-  setupConsoleCapture() {
-    // 保存原始console方法
-    const originalLog = console.log;
-    const originalWarn = console.warn;
-    const originalError = console.error;
 
-    // 重写console方法
-    console.log = (...args) => {
-      originalLog.apply(console, args);
-      const message = args.join(' ');
-      // 过滤掉一些不重要的日志
-      if (!message.includes('SidebarFlowManager') && !message.includes('初始化完成')) {
-        this.addLog(message, 'info');
-      }
-    };
-
-    console.warn = (...args) => {
-      originalWarn.apply(console, args);
-      this.addLog(args.join(' '), 'warn');
-    };
-
-    console.error = (...args) => {
-      originalError.apply(console, args);
-      this.addLog(args.join(' '), 'error');
-    };
-  }
 
   // 停止自动化流程
   async stopAutomationFlow() {

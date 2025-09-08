@@ -11,7 +11,6 @@ importScripts(
   'utils/selector-helper.js',
   'utils/flow-editor.js',
   'utils/smart-selector-generator.js',
-  'utils/performance-monitor.js',
   'utils/advanced-config-manager.js'
 );
 
@@ -26,7 +25,6 @@ class BackgroundService {
     // 初始化高级功能组件
     this.flowEditor = new FlowEditor();
     this.smartSelectorGenerator = new SmartSelectorGenerator();
-    this.performanceMonitor = new PerformanceMonitor();
     this.advancedConfigManager = new AdvancedConfigManager();
 
     this.init();
@@ -191,9 +189,7 @@ class BackgroundService {
           await this.handleTestSelector(message, sendResponse);
           break;
 
-        case 'getPerformanceReport':
-          await this.handleGetPerformanceReport(message, sendResponse);
-          break;
+
 
         case 'getAdvancedConfig':
           await this.handleGetAdvancedConfig(message, sendResponse);
@@ -970,21 +966,7 @@ class BackgroundService {
     }
   }
 
-  // 获取性能报告
-  async handleGetPerformanceReport(message, sendResponse) {
-    try {
-      const { executionId } = message;
-      const report = this.performanceMonitor.getPerformanceReport(executionId);
 
-      sendResponse({
-        success: true,
-        report: report
-      });
-    } catch (error) {
-      console.error('获取性能报告失败:', error);
-      sendResponse({ success: false, error: error.message });
-    }
-  }
 
   // 获取高级配置
   async handleGetAdvancedConfig(message, sendResponse) {
