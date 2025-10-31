@@ -1,11 +1,24 @@
+/**
+ * API调用封装
+ *
+ * 使用方法:
+ * ```javascript
+ * const apiManager = new ApiManager();
+ * await apiManager.init();
+ * const code = await apiManager.getVerificationCode();
+ * ```
+ */
+
 // API调用封装
 class ApiManager {
   constructor() {
     this.storageManager = null;
+    this.proxyManager = null;
   }
 
   // 初始化
   async init() {
+    // 初始化 storageManager
     if (typeof storageManager !== 'undefined') {
       this.storageManager = storageManager;
     } else if (typeof self !== 'undefined' && self.storageManager) {
@@ -15,6 +28,45 @@ class ApiManager {
     } else {
       console.error('StorageManager not found');
       throw new Error('StorageManager not available');
+    }
+
+    // 初始化 proxyManager
+    if (typeof proxyManager !== 'undefined') {
+      this.proxyManager = proxyManager;
+    } else if (typeof self !== 'undefined' && self.proxyManager) {
+      this.proxyManager = self.proxyManager;
+    } else if (typeof window !== 'undefined' && window.proxyManager) {
+      this.proxyManager = window.proxyManager;
+    } else {
+      console.warn('ProxyManager not found, proxy功能将不可用');
+    }
+  }
+
+  // 带代理支持的fetch请求包装
+  async _fetchWithProxy(url, options = {}) {
+    if (!this.storageManager) {
+      await this.init();
+    }
+
+    const proxyConfig = await this.storageManager.getProxyConfig();
+
+    // 如果代理未启用或proxyManager不可用,直接请求
+    if (!proxyConfig.enabled || !this.proxyManager) {
+      return await fetch(url, options);
+    }
+
+    // 使用代理管理器执行请求
+    try {
+      return await this.proxyManager.executeWithProxy(
+        async () => await fetch(url, options),
+        proxyConfig
+      );
+    } catch (error) {
+      // 代理错误特殊处理
+      if (error.message.includes('proxy') || error.message.includes('代理')) {
+        throw new Error(`代理连接失败: ${error.message}\n请检查代理配置或暂时禁用代理`);
+      }
+      throw error;
     }
   }
 
@@ -28,13 +80,14 @@ class ApiManager {
     };
 
     const actualMaxRetries = maxRetries || retryConfig.maxRetries;
-    
+
     for (let attempt = 0; attempt < actualMaxRetries; attempt++) {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), retryConfig.timeout);
 
-        const response = await fetch(url, {
+        // 使用代理包装的fetch
+        const response = await this._fetchWithProxy(url, {
           ...options,
           signal: controller.signal
         });
@@ -48,11 +101,11 @@ class ApiManager {
         }
       } catch (error) {
         console.error(`请求失败 (尝试 ${attempt + 1}/${actualMaxRetries}):`, error);
-        
+
         if (attempt === actualMaxRetries - 1) {
           throw error;
         }
-        
+
         // 指数退避延迟
         const delay = retryConfig.retryInterval * Math.pow(2, attempt);
         await this.sleep(delay);
@@ -304,34 +357,6 @@ class ApiManager {
     const tagNameMatch = tagHtml.match(/<(\w+)/);
     return tagNameMatch ? tagNameMatch[1] : null;
   }
-
-  // 在新标签页中打开链接
-  async openLinksInNewTabs(links) {
-    try {
-      if (!links || links.length === 0) {
-        console.log('没有链接需要打开');
-        return;
-      }
-
-      console.log(`准备在新标签页中打开 ${links.length} 个链接`);
-
-      for (const link of links) {
-        try {
-          await chrome.tabs.create({ url: link, active: false });
-          console.log('已在新标签页打开链接:', link);
-
-          // 添加短暂延迟，避免同时打开太多标签页
-          await new Promise(resolve => setTimeout(resolve, 500));
-        } catch (error) {
-          console.error('打开链接失败:', link, error);
-        }
-      }
-    } catch (error) {
-      console.error('批量打开链接失败:', error);
-    }
-  }
-
-
 
   // 在新标签页中打开链接
   async openLinksInNewTabs(links) {

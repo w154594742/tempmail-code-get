@@ -7,7 +7,8 @@
     "storage",
     "activeTab",
     "sidePanel",
-    "scripting"
+    "scripting",
+    "proxy"
   ],
   "host_permissions": [
     "https://tempmail.plus/*",
