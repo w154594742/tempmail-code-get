@@ -35,6 +35,14 @@ class StorageManager {
       automationConfig: {
         flows: [],
         executionStates: {}
+      },
+      proxyConfig: {
+        enabled: false,
+        type: 'http',        // 'http' | 'socks5'
+        host: '',
+        port: '',
+        username: '',        // 可选
+        password: ''         // 可选
       }
     };
   }
@@ -667,6 +675,30 @@ class StorageManager {
     } catch (error) {
       console.error('获取域名匹配流程失败:', error);
       return [];
+    }
+  }
+
+  // ========== 代理配置相关方法 ==========
+
+  // 获取代理配置
+  async getProxyConfig() {
+    try {
+      const config = await this.getConfig();
+      return config.proxyConfig || this.defaultConfig.proxyConfig;
+    } catch (error) {
+      console.error('获取代理配置失败:', error);
+      return this.defaultConfig.proxyConfig;
+    }
+  }
+
+  // 保存代理配置
+  async setProxyConfig(proxyConfig) {
+    try {
+      await this.setConfig('proxyConfig', proxyConfig);
+      return true;
+    } catch (error) {
+      console.error('保存代理配置失败:', error);
+      return false;
     }
   }
 }

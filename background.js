@@ -3,6 +3,7 @@ importScripts(
   'utils/storage.js',
   'utils/email-generator.js',
   'utils/api.js',
+  'utils/proxy-manager.js',
   'utils/automation-manager.js',
   'utils/automation-runner.js',
   'utils/automation-templates.js',
@@ -57,6 +58,7 @@ class BackgroundService {
 
   // 处理消息
   async handleMessage(message, sender, sendResponse) {
+    console.log('[Background] 收到消息:', message.action);
     try {
       switch (message.action) {
         case 'generateEmail':
@@ -276,6 +278,10 @@ class BackgroundService {
 
         case 'resetSettings':
           await this.handleResetSettings(message, sendResponse);
+          break;
+
+        case 'testProxyConnection':
+          await this.handleTestProxyConnection(message, sendResponse);
           break;
 
         // 自动化日志
@@ -825,7 +831,116 @@ class BackgroundService {
   // 处理插件启动
   async handleStartup() {
     console.log('插件启动');
-    // 可以在这里执行一些启动时的初始化操作
+    // 清理可能残留的代理配置
+    await this.cleanupProxySettings();
+  }
+
+  // 清理代理设置
+  async cleanupProxySettings() {
+    try {
+      // 检查是否有代理配置被应用
+      const config = await chrome.proxy.settings.get({});
+
+      // 如果代理是被控制的（levelOfControl === 'controlled_by_this_extension'），清除它
+      if (config.levelOfControl === 'controlled_by_this_extension') {
+        console.log('检测到残留代理配置，正在清理...');
+        await chrome.proxy.settings.clear({});
+        console.log('代理配置已清理');
+      } else {
+        console.log('无需清理代理配置');
+      }
+    } catch (error) {
+      console.error('清理代理设置失败:', error);
+      // 不影响插件启动，仅记录错误
+    }
+  }
+
+  // 测试代理连接（使用 ProxyManager）
+  async handleTestProxyConnection(message, sendResponse) {
+    try {
+      const { proxyConfig } = message;
+
+      // 1. 参数验证
+      if (!proxyConfig || !proxyConfig.enabled || !proxyConfig.host || !proxyConfig.port) {
+        console.log('[TestProxy] 参数验证失败:', proxyConfig);
+        sendResponse({
+          success: false,
+          error: !proxyConfig ? '代理配置缺失' :
+                 (proxyConfig.enabled === false ? '请先启用代理开关' : '代理配置不完整')
+        });
+        return;
+      }
+
+      console.log('[TestProxy] 开始测试代理连接:', {
+        type: proxyConfig.type,
+        host: proxyConfig.host,
+        port: proxyConfig.port,
+        hasAuth: !!(proxyConfig.username && proxyConfig.password)
+      });
+
+      const startTime = Date.now();
+
+      // 2. 使用 ProxyManager 执行代理测试
+      const result = await proxyManager.executeWithProxy(
+        async () => {
+          console.log('[TestProxy] 发送测试请求到 tempmail.plus API...');
+
+          // 测试连接到 tempmail.plus API（5秒超时）
+          const response = await fetch('https://tempmail.plus/api/mails?limit=1&epin=test', {
+            method: 'GET',
+            signal: AbortSignal.timeout(5000)
+          });
+
+          const latency = Date.now() - startTime;
+          console.log('[TestProxy] 收到响应:', {
+            status: response.status,
+            ok: response.ok,
+            latency: latency
+          });
+
+          return {
+            status: response.status,
+            ok: response.ok,
+            latency: latency
+          };
+        },
+        proxyConfig
+      );
+
+      // 3. 判断测试结果（200/401/403 都算成功）
+      if ([200, 401, 403].includes(result.status)) {
+        console.log('[TestProxy] ✅ 测试成功');
+        sendResponse({
+          success: true,
+          latency: result.latency,
+          message: `代理连接测试成功 (延迟: ${result.latency}ms)`
+        });
+      } else {
+        console.log('[TestProxy] ❌ 异常状态码:', result.status);
+        sendResponse({
+          success: false,
+          error: `代理服务器返回异常状态码: ${result.status}`
+        });
+      }
+
+    } catch (error) {
+      console.error('[TestProxy] ❌ 测试失败:', error);
+
+      // 提供更友好的错误信息
+      let errorMessage = error.message;
+      if (error.name === 'TimeoutError' || errorMessage.includes('timeout')) {
+        errorMessage = '代理连接超时（5秒），请检查代理服务器是否可用';
+      } else if (errorMessage.includes('ERR_PROXY_CONNECTION_FAILED')) {
+        errorMessage = '无法连接到代理服务器，请检查地址和端口是否正确';
+      } else if (errorMessage.includes('ERR_TUNNEL_CONNECTION_FAILED')) {
+        errorMessage = '代理隧道连接失败，请检查代理服务器配置';
+      }
+
+      sendResponse({
+        success: false,
+        error: `代理连接失败: ${errorMessage}`
+      });
+    }
   }
 
   // ========== 自动化相关消息处理方法 ==========
@@ -1459,6 +1574,9 @@ class BackgroundService {
         tempMailConfig = await storageManager.getConfig('tempMailConfig');
       }
 
+      // 获取代理配置
+      const proxyConfig = await storageManager.getProxyConfig();
+
       // 组合设置数据，匹配设置页面期望的格式
       const settings = {
         domains: emailConfig.domains || '',
@@ -1468,7 +1586,8 @@ class BackgroundService {
         domainSelectionMode: emailConfig.domainSelectionMode || 'random',
         avoidRepeatCount: emailConfig.avoidRepeatCount || 3,
         randomStringConfig: emailConfig.randomStringConfig || { minLength: 6, maxLength: 15 },
-        regexPatternConfig: emailConfig.regexPatternConfig || { pattern: '[a-z]{3,8}\\d{2,4}', maxLength: 20 }
+        regexPatternConfig: emailConfig.regexPatternConfig || { pattern: '[a-z]{3,8}\\d{2,4}', maxLength: 20 },
+        proxyConfig: proxyConfig
       };
 
       console.log('handleGetSettings - emailConfig:', emailConfig);
@@ -1521,6 +1640,11 @@ class BackgroundService {
         emailConfig: updatedEmailConfig,
         tempMailConfig: updatedTempMailConfig
       });
+
+      // 保存代理配置
+      if (settings.proxyConfig) {
+        await storageManager.setProxyConfig(settings.proxyConfig);
+      }
 
       sendResponse({ success: true });
     } catch (error) {

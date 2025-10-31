@@ -4354,3 +4354,241 @@ body {
 }
 
 
+/* ========== 代理配置样式 ========== */
+
+/* 代理开关容器 */
+.proxy-header {
+    display: block;
+    margin-bottom: 0;
+}
+
+.proxy-switch-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 开关样式 */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.3s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #667eea;
+}
+
+input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+input:disabled + .slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 代理字段容器 */
+.proxy-fields {
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+/* 表单行布局 */
+.form-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.form-row:last-child {
+    margin-bottom: 0;
+}
+
+/* 代理输入框 */
+.proxy-input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    font-size: 13px;
+    transition: border-color 0.2s;
+}
+
+.proxy-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.proxy-input:disabled {
+    background-color: #f7fafc;
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* 认证折叠面板 */
+.auth-section {
+    margin-top: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 10px;
+    background: white;
+}
+
+.auth-section summary {
+    cursor: pointer;
+    font-weight: 500;
+    color: #4a5568;
+    list-style: none;
+    user-select: none;
+    padding: 4px 0;
+}
+
+.auth-section summary::-webkit-details-marker {
+    display: none;
+}
+
+.auth-section summary:hover {
+    color: #667eea;
+}
+
+.auth-section[open] summary {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.auth-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* 测试按钮 */
+#testProxyBtn {
+    margin-top: 12px;
+    background-color: #48bb78;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background-color 0.2s;
+}
+
+#testProxyBtn:hover:not(:disabled) {
+    background-color: #38a169;
+}
+
+#testProxyBtn:disabled {
+    background-color: #cbd5e0;
+    cursor: not-allowed;
+}
+
+/* 测试结果 */
+.proxy-test-result {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 4px;
+    display: none;
+    font-size: 13px;
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.proxy-test-result.success {
+    display: block;
+    background-color: #c6f6d5;
+    color: #22543d;
+    border: 1px solid #9ae6b4;
+}
+
+.proxy-test-result.error {
+    display: block;
+    background-color: #fed7d7;
+    color: #742a2a;
+    border: 1px solid #fc8181;
+}
+
+.proxy-test-result.testing {
+    display: block;
+    background-color: #bee3f8;
+    color: #2c5282;
+    border: 1px solid #90cdf4;
+}
+
+/* 响应式调整 */
+@media (max-width: 300px) {
+    .form-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .form-group {
+        margin-right: 0 !important;
+    }
+
+    .proxy-fields {
+        padding: 8px;
+    }
+
+    .switch {
+        width: 40px;
+        height: 22px;
+    }
+
+    .slider:before {
+        height: 16px;
+        width: 16px;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(18px);
+    }
+}

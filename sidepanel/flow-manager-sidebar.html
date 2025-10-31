@@ -292,6 +292,58 @@
                             <div class="form-help">用于访问tempmail.plus API的PIN码</div>
                         </div>
 
+                        <!-- 代理配置 -->
+                        <div class="form-group">
+                            <label class="proxy-header">
+                                <div class="proxy-switch-wrapper">
+                                    <label class="switch">
+                                        <input type="checkbox" id="proxyEnabled">
+                                        <span class="slider"></span>
+                                    </label>
+                                    <span>启用代理(访问tempmail.plus时使用)</span>
+                                </div>
+                            </label>
+
+                            <div id="proxyFields" class="proxy-fields" style="display:none; margin-top: 12px;">
+                                <div class="form-row">
+                                    <div class="form-group" style="flex: 1; margin-right: 8px;">
+                                        <label for="proxyType">代理类型</label>
+                                        <select id="proxyType" class="proxy-input">
+                                            <option value="http">HTTP</option>
+                                            <option value="socks5">SOCKS5</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" style="flex: 2; margin-right: 8px;">
+                                        <label for="proxyHost">代理地址</label>
+                                        <input type="text" id="proxyHost" placeholder="127.0.0.1" class="proxy-input">
+                                    </div>
+                                    <div class="form-group" style="flex: 1;">
+                                        <label for="proxyPort">端口</label>
+                                        <input type="number" id="proxyPort" placeholder="7890" class="proxy-input">
+                                    </div>
+                                </div>
+
+                                <details class="auth-section">
+                                    <summary>🔐 身份认证(可选)</summary>
+                                    <div class="auth-fields">
+                                        <div class="form-group">
+                                            <label for="proxyUsername">用户名</label>
+                                            <input type="text" id="proxyUsername" placeholder="可选" class="proxy-input">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="proxyPassword">密码</label>
+                                            <input type="password" id="proxyPassword" placeholder="可选" class="proxy-input">
+                                        </div>
+                                    </div>
+                                </details>
+
+                                <button id="testProxyBtn" class="btn btn-secondary btn-small" style="margin-top: 8px;">🧪 测试代理连接</button>
+                                <div id="proxyTestResult" class="proxy-test-result"></div>
+                            </div>
+
+                            <div class="form-help">配置HTTP/SOCKS5代理以访问tempmail.plus,代理仅在API请求时临时生效</div>
+                        </div>
+
                         <div class="form-group">
                             <label>邮箱生成方式:</label>
                             <div class="radio-group">

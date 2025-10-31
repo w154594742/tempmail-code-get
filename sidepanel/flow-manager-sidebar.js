@@ -2602,6 +2602,36 @@ class SidebarFlowManager {
           console.log('设置PIN码输入框:', settings.pinCode);
         }
 
+        // 加载代理配置
+        const proxyConfig = settings.proxyConfig || {
+          enabled: false,
+          type: 'http',
+          host: '',
+          port: '',
+          username: '',
+          password: ''
+        };
+
+        const proxyEnabled = document.getElementById('proxyEnabled');
+        const proxyType = document.getElementById('proxyType');
+        const proxyHost = document.getElementById('proxyHost');
+        const proxyPort = document.getElementById('proxyPort');
+        const proxyUsername = document.getElementById('proxyUsername');
+        const proxyPassword = document.getElementById('proxyPassword');
+
+        if (proxyEnabled) proxyEnabled.checked = proxyConfig.enabled;
+        if (proxyType) proxyType.value = proxyConfig.type;
+        if (proxyHost) proxyHost.value = proxyConfig.host;
+        if (proxyPort) proxyPort.value = proxyConfig.port;
+        if (proxyUsername) proxyUsername.value = proxyConfig.username || '';
+        if (proxyPassword) proxyPassword.value = proxyConfig.password || '';
+
+        // 显示/隐藏代理字段
+        this.toggleProxyFields();
+
+        // 绑定代理相关事件
+        this.bindProxyEvents();
+
         // 加载邮箱生成模式
         const mode = settings.generationMode || 'nameNumber';
         const modeRadio = document.querySelector(`input[name="emailGenerationMode"][value="${mode}"]`);
@@ -2715,6 +2745,139 @@ class SidebarFlowManager {
     }
   }
 
+  // 显示/隐藏代理配置字段
+  toggleProxyFields() {
+    const proxyEnabled = document.getElementById('proxyEnabled');
+    const proxyFields = document.getElementById('proxyFields');
+
+    if (proxyEnabled && proxyFields) {
+      proxyFields.style.display = proxyEnabled.checked ? 'block' : 'none';
+    }
+  }
+
+  // 绑定代理配置相关事件
+  bindProxyEvents() {
+    const proxyEnabled = document.getElementById('proxyEnabled');
+    const proxyType = document.getElementById('proxyType');
+    const proxyHost = document.getElementById('proxyHost');
+    const proxyPort = document.getElementById('proxyPort');
+    const proxyUsername = document.getElementById('proxyUsername');
+    const proxyPassword = document.getElementById('proxyPassword');
+    const testProxyBtn = document.getElementById('testProxyBtn');
+
+    // 代理启用开关事件
+    if (proxyEnabled && !proxyEnabled.hasAttribute('data-proxy-bound')) {
+      proxyEnabled.addEventListener('change', async () => {
+        this.toggleProxyFields();
+        await this.saveSettings();
+      });
+      proxyEnabled.setAttribute('data-proxy-bound', 'true');
+    }
+
+    // 代理配置项失焦自动保存
+    const proxyInputs = [proxyType, proxyHost, proxyPort, proxyUsername, proxyPassword];
+    const debouncedSave = this.debounce(async () => {
+      await this.saveSettings();
+    }, 500);
+
+    proxyInputs.forEach(input => {
+      if (input && !input.hasAttribute('data-proxy-autosave-bound')) {
+        input.addEventListener('blur', debouncedSave);
+        input.setAttribute('data-proxy-autosave-bound', 'true');
+      }
+    });
+
+    // 测试代理连接按钮
+    if (testProxyBtn && !testProxyBtn.hasAttribute('data-test-bound')) {
+      testProxyBtn.addEventListener('click', async () => {
+        await this.testProxyConnection();
+      });
+      testProxyBtn.setAttribute('data-test-bound', 'true');
+    }
+  }
+
+  // 测试代理连接
+  async testProxyConnection() {
+    const proxyEnabled = document.getElementById('proxyEnabled');
+    const proxyType = document.getElementById('proxyType');
+    const proxyHost = document.getElementById('proxyHost');
+    const proxyPort = document.getElementById('proxyPort');
+    const proxyUsername = document.getElementById('proxyUsername');
+    const proxyPassword = document.getElementById('proxyPassword');
+    const testResultDiv = document.getElementById('proxyTestResult');
+    const testBtn = document.getElementById('testProxyBtn');
+
+    if (!proxyEnabled || !proxyEnabled.checked) {
+      this.showProxyTestResult('请先启用代理', 'error');
+      return;
+    }
+
+    const host = proxyHost?.value.trim();
+    const port = proxyPort?.value.trim();
+
+    if (!host || !port) {
+      this.showProxyTestResult('请填写代理服务器地址和端口', 'error');
+      return;
+    }
+
+    // 禁用测试按钮，显示测试中状态
+    if (testBtn) {
+      testBtn.disabled = true;
+      testBtn.textContent = '🔄 测试中...';
+    }
+    this.showProxyTestResult('正在测试代理连接...', 'info');
+
+    try {
+      const proxyConfig = {
+        enabled: true,
+        type: proxyType?.value || 'http',
+        host: host,
+        port: port,
+        username: proxyUsername?.value.trim() || '',
+        password: proxyPassword?.value.trim() || ''
+      };
+
+      const response = await chrome.runtime.sendMessage({
+        action: 'testProxyConnection',
+        proxyConfig: proxyConfig
+      });
+
+      if (response.success) {
+        this.showProxyTestResult(`✅ ${response.message || '代理连接成功'}`, 'success');
+        this.addLog(`代理测试成功: ${host}:${port} - ${response.message}`, 'success');
+      } else {
+        this.showProxyTestResult(`❌ 代理连接失败: ${response.error || '未知错误'}`, 'error');
+        this.addLog(`代理测试失败: ${response.error}`, 'error');
+      }
+    } catch (error) {
+      this.showProxyTestResult(`❌ 测试失败: ${error.message}`, 'error');
+      this.addLog(`代理测试异常: ${error.message}`, 'error');
+    } finally {
+      // 恢复测试按钮
+      if (testBtn) {
+        testBtn.disabled = false;
+        testBtn.textContent = '🧪 测试代理连接';
+      }
+    }
+  }
+
+  // 显示代理测试结果
+  showProxyTestResult(message, type) {
+    const testResultDiv = document.getElementById('proxyTestResult');
+    if (!testResultDiv) return;
+
+    testResultDiv.textContent = message;
+    testResultDiv.className = `proxy-test-result ${type}`;
+    testResultDiv.style.display = 'block';
+
+    // 成功或错误信息5秒后自动隐藏，info信息不自动隐藏
+    if (type === 'success' || type === 'error') {
+      setTimeout(() => {
+        testResultDiv.style.display = 'none';
+      }, 5000);
+    }
+  }
+
   // 绑定设置项失焦自动保存事件
   bindSettingsAutoSave() {
     const domainsInput = document.getElementById('domainsInput');
@@ -2771,6 +2934,14 @@ class SidebarFlowManager {
       const selectedDomainMode = document.querySelector('input[name="domainSelectionMode"]:checked');
       const avoidRepeatCountInput = document.getElementById('avoidRepeatCountInput');
 
+      // 获取代理配置
+      const proxyEnabled = document.getElementById('proxyEnabled');
+      const proxyType = document.getElementById('proxyType');
+      const proxyHost = document.getElementById('proxyHost');
+      const proxyPort = document.getElementById('proxyPort');
+      const proxyUsername = document.getElementById('proxyUsername');
+      const proxyPassword = document.getElementById('proxyPassword');
+
       const settings = {
         domains: domainsInput ? domainsInput.value.trim() : '',
         targetEmail: targetEmailInput ? targetEmailInput.value.trim() : '',
@@ -2785,6 +2956,14 @@ class SidebarFlowManager {
         regexPatternConfig: {
           pattern: regexPatternInput ? regexPatternInput.value.trim() : '[a-z]{3,8}\\d{2,4}',
           maxLength: 20
+        },
+        proxyConfig: {
+          enabled: proxyEnabled ? proxyEnabled.checked : false,
+          type: proxyType ? proxyType.value : 'http',
+          host: proxyHost ? proxyHost.value.trim() : '',
+          port: proxyPort ? proxyPort.value.trim() : '',
+          username: proxyUsername ? proxyUsername.value.trim() : '',
+          password: proxyPassword ? proxyPassword.value.trim() : ''
         }
       };
 
